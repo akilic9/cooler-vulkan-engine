@@ -20,8 +20,17 @@ private:
     void InitWindow();
     void Update();
     void TerminateWindow();
+        
+    void InitPhysicalDevice();
+    void InitLogicalDevice();
+    bool IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice);
+    
+    std::vector<const char*> RequiredDeviceExtensions = {vk::KHRSwapchainExtensionName};
     
     vk::raii::Instance VulkanInstance = nullptr;
     vk::raii::DebugUtilsMessengerEXT DebugMessenger = nullptr;
+    vk::raii::PhysicalDevice PhysicalDevice = nullptr;
+    vk::raii::Device LogicalDevice = nullptr;
+    vk::raii::Queue GraphicsQueue = nullptr;
     GLFWwindow* Window = nullptr;
 };

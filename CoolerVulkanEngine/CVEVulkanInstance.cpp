@@ -11,12 +11,13 @@ void CVEVulkanInstance::CreateVulkanInstance(vk::raii::Instance& outInstance, vk
 
 void CVEVulkanInstance::InitVulkanInstance(vk::raii::Instance& instance)
 {
-    vk::raii::Context instanceContext;
     constexpr vk::ApplicationInfo appInfo{.pApplicationName = "CoolerVulkanEngine",
                                           .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
                                           .pEngineName = "No Engine",
                                           .engineVersion = VK_MAKE_VERSION(1, 0, 0),
                                           .apiVersion = vk::ApiVersion14};
+    
+    vk::raii::Context instanceContext;
     
     const std::vector<const char*>& requiredLayers = GetRequiredLayers();
     CheckLayersSupport(instanceContext, requiredLayers);
@@ -82,6 +83,7 @@ void CVEVulkanInstance::CheckLayersSupport(const vk::raii::Context& instanceCont
 {
     const std::vector<vk::LayerProperties>& layerProperties = instanceContext.enumerateInstanceLayerProperties();
     
+    //TODO: these nested lambdas may be hard to read
     auto unsupportedLayerIt = std::ranges::find_if(inLayers, [&layerProperties](const char* requiredLayer)
     {
         return std::ranges::none_of(layerProperties, [requiredLayer](const vk::LayerProperties& layerProperty)
@@ -104,6 +106,7 @@ void CVEVulkanInstance::CheckExtensionsSupport(const vk::raii::Context& instance
     PrintExtensions(extensionProperties, inExtensions);
 #endif // _DEBUG
 
+    //TODO: these nested lambdas may be hard to read
     auto unsupportedPropertyIt = std::ranges::find_if(inExtensions, [&extensionProperties](const char* requiredExtension)
     {
         return std::ranges::none_of(extensionProperties, [requiredExtension](const vk::ExtensionProperties& extensionProperty)
@@ -134,8 +137,8 @@ void CVEVulkanInstance::PrintExtensions(const std::vector<vk::ExtensionPropertie
     }
 }
 
-vk::Bool32 CVEVulkanInstance::DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
-    vk::DebugUtilsMessageTypeFlagsEXT type, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+vk::Bool32 CVEVulkanInstance::DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type,
+                                            const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     std::cerr << "Validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
 
