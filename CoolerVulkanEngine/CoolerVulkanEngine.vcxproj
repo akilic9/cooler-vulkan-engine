@@ -131,6 +131,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CoolerVulkanEngine.cpp" />
+    <ClCompile Include="CVEApplication.cpp" />
+    <ClCompile Include="CVEVulkanInstance.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CVEApplication.h" />
+    <ClInclude Include="CVEVulkanInstance.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
