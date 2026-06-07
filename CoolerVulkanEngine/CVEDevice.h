@@ -48,6 +48,8 @@ private:
     vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
     vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
     uint32_t ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabilities);
+    
+    void CreateImageViews();
     /// SWAP CHAIN END
     
     /// INSTANCE CREATION VARS
@@ -80,5 +82,6 @@ private:
     std::vector<vk::Image> SwapChainImages;
     vk::Extent2D Extent;
     vk::SurfaceFormatKHR SurfaceFormat;
+    std::vector<vk::raii::ImageView> SwapChainImageViews;
     ///  SWAP CHAIN VARS END
 };

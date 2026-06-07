@@ -332,3 +332,24 @@ uint32_t CVEDevice::ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabi
     }
     return minImageCount;
 }
+
+void CVEDevice::CreateImageViews()
+{
+    assert(SwapChainImageViews.empty());
+
+    vk::ImageViewCreateInfo imageViewCreateInfo{.viewType = vk::ImageViewType::e2D,
+                                                .format = SurfaceFormat.format,
+                                                .components = {.r = vk::ComponentSwizzle::eIdentity,
+                                                                  .g = vk::ComponentSwizzle::eIdentity,
+                                                                  .b = vk::ComponentSwizzle::eIdentity,
+                                                                  .a = vk::ComponentSwizzle::eIdentity},
+                                                .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                                        .levelCount = 1,
+                                                                        .layerCount = 1}};
+    
+    for (const vk::Image& image : SwapChainImages)
+    {
+        imageViewCreateInfo.image = image;
+        SwapChainImageViews.emplace_back(LogicalDevice, imageViewCreateInfo);
+    }
+}
