@@ -1,7 +1,6 @@
 #pragma once
-
-#include <glfw3.h>
-#include "CVEVulkanInstance.h"
+#include "CVEDevice.h"
+#include "CVEWindow.h"
 
 namespace CVEDefaultWindowParams
 {
@@ -16,21 +15,9 @@ public:
     void Run();
 
 private:
-    void InitApp();
-    void InitWindow();
     void Update();
     void TerminateWindow();
-        
-    void InitPhysicalDevice();
-    void InitLogicalDevice();
-    bool IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice);
     
-    std::vector<const char*> RequiredDeviceExtensions = {vk::KHRSwapchainExtensionName};
-    
-    vk::raii::Instance VulkanInstance = nullptr;
-    vk::raii::DebugUtilsMessengerEXT DebugMessenger = nullptr;
-    vk::raii::PhysicalDevice PhysicalDevice = nullptr;
-    vk::raii::Device LogicalDevice = nullptr;
-    vk::raii::Queue GraphicsQueue = nullptr;
-    GLFWwindow* Window = nullptr;
+    CVEWindow Window{CVEDefaultWindowParams::DEFAULT_WINDOW_WIDTH, CVEDefaultWindowParams::DEFAULT_WINDOW_HEIGHT, CVEDefaultWindowParams::DEFAULT_WINDOW_TITLE};
+    CVEDevice Device{Window};
 };
