@@ -14,6 +14,7 @@ CVEDevice::CVEDevice(CVEWindow& inWindow)
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
+    
 }
 
 CVEDevice::~CVEDevice()
@@ -230,11 +231,10 @@ bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
             return strcmp(availableDeviceExtension.extensionName, requiredDeviceExtension) == 0;
         });
     });
-    
-    // what??
-    auto features = physicalDevice.template getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
-    bool bSupportsRequiredFeatures = features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
-                                     features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
+
+    auto features = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+    bool bSupportsRequiredFeatures = features.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
+                                     features.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
     
     return bSupportsVulkan1_3 && bSupportsGraphics && bSupportsAllRequiredExtensions && bSupportsRequiredFeatures;
 }
@@ -249,6 +249,7 @@ void CVEDevice::CreateSurface()
     Surface = vk::raii::SurfaceKHR(VulkanInstance, surface);
 }
 
+// TODO: Move swapchain stuff to it's own file
 void CVEDevice::CreateSwapChain()
 {
     const vk::SurfaceCapabilitiesKHR& surfaceCapabilities = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);

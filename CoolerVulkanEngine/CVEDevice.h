@@ -52,6 +52,11 @@ private:
     void CreateImageViews();
     /// SWAP CHAIN END
     
+    /// PIPELINE
+    
+    
+    /// PIPELINE END
+    
     /// INSTANCE CREATION VARS
     std::vector<const char*> ValidationLayers = {"VK_LAYER_KHRONOS_validation"};
     
