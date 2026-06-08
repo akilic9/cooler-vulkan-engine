@@ -2,6 +2,7 @@
 
 #include <glfw3.h>
 #include <iostream>
+#include <fstream>
 
 #include "CVEWindow.h"
 
@@ -14,7 +15,7 @@ CVEDevice::CVEDevice(CVEWindow& inWindow)
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
-    
+    CreateGraphicsPipeline();
 }
 
 CVEDevice::~CVEDevice()
@@ -165,7 +166,7 @@ void CVEDevice::PickPhysicalDevice()
     
     if (deviceIt == physicalDevices.end())
     {
-        throw std::runtime_error( "failed to find a suitable GPU!" );
+        throw std::runtime_error( "Failed to find a suitable GPU!" );
     }
     
     PhysicalDevice = *deviceIt;
@@ -186,7 +187,7 @@ void CVEDevice::CreateLogicalDevice()
     }
     if (queueIndex == ~0)
     {
-        throw std::runtime_error("Could not find a queue for graphics and present -> terminating");
+        throw std::runtime_error("Could not find a queue for graphics and present, terminating...");
     }
     
     vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain =
@@ -244,7 +245,7 @@ void CVEDevice::CreateSurface()
     VkSurfaceKHR surface;
     if (glfwCreateWindowSurface(*VulkanInstance, Window.GetGLFWWindow(), nullptr, &surface) != 0)
     {
-        throw std::runtime_error("failed to create window surface!");
+        throw std::runtime_error("Failed to create window surface!");
     }
     Surface = vk::raii::SurfaceKHR(VulkanInstance, surface);
 }
@@ -303,6 +304,11 @@ vk::PresentModeKHR CVEDevice::ChoosePresentMode(const std::vector<vk::PresentMod
     {
         return vk::PresentModeKHR::eMailbox == presentMode;
     });
+
+#ifdef _DEBUG
+    const char* presentModeText = bSupportsMailbox ? "Mailbox" : "FIFO";
+    std::cout << "Present mode: " << presentModeText << '\n';
+#endif //_DEBUG
     
     return bSupportsMailbox ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
 }
@@ -354,3 +360,121 @@ void CVEDevice::CreateImageViews()
         SwapChainImageViews.emplace_back(LogicalDevice, imageViewCreateInfo);
     }
 }
+
+std::vector<char> CVEDevice::ReadShaderFile(const std::string& fileName)
+{
+    std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Failed to open shader file: " + fileName);
+    }
+    
+    std::vector<char> fileBuffer(file.tellg());
+    file.seekg(0, std::ios::beg);
+    file.read(fileBuffer.data(), static_cast<std::streamsize>(fileBuffer.size()));
+    
+    file.close();
+
+    return fileBuffer;
+}
+
+void CVEDevice::CreateGraphicsPipeline()
+{
+    const std::vector<char>& vertexShader = ReadShaderFile("Shaders/triangle.vert.spv");
+    vk::raii::ShaderModule vertexShaderModule = CreateShaderModule(vertexShader);
+    
+    const std::vector<char>& fragmentShader = ReadShaderFile("Shaders/triangle.frag.spv");
+    vk::raii::ShaderModule fragmentShaderModule = CreateShaderModule(fragmentShader);
+    
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex,
+                                                          .module = vertexShaderModule, 
+                                                          .pName = "main"};
+    
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment,
+                                                          .module = fragmentShaderModule, 
+                                                          .pName = "main"};
+    
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    
+    const std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+
+    vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+                                                    .pDynamicStates = dynamicStates.data()};
+    
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+    
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology = vk::PrimitiveTopology::eTriangleList};
+    
+    vk::Viewport viewport{.x = 0.0f,
+                          .y = 0.0f,
+                          .width = static_cast<float>(Extent.width),
+                          .height = static_cast<float>(Extent.height),
+                          .minDepth = 0.0f,
+                          .maxDepth = 1.0f};
+    
+    vk::Rect2D scissor{vk::Offset2D{ 0, 0 }, Extent};
+    
+    vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
+                                                      .pViewports = &viewport,
+                                                      .scissorCount = 1,
+                                                      .pScissors = &scissor};
+    
+    vk::PipelineRasterizationStateCreateInfo rasterizer{.depthClampEnable = vk::False,
+                                                        .rasterizerDiscardEnable = vk::False,
+                                                        .polygonMode = vk::PolygonMode::eFill,
+                                                        .cullMode = vk::CullModeFlagBits::eBack,
+                                                        .frontFace = vk::FrontFace::eClockwise,
+                                                        .depthBiasEnable = vk::False,
+                                                        .lineWidth = 1.0f};
+    
+    vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
+    
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{.blendEnable = vk::True,
+                                                               .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                                                               .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                                                               .colorBlendOp = vk::BlendOp::eAdd,
+                                                               .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                                                               .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                                                               .alphaBlendOp = vk::BlendOp::eAdd,
+                                                               .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+    
+    vk::PipelineColorBlendStateCreateInfo colorBlending{.logicOpEnable = vk::False,
+                                                        .logicOp = vk::LogicOp::eCopy,
+                                                        .attachmentCount = 1,
+                                                        .pAttachments = &colorBlendAttachment};
+    
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
+
+    PipelineLayout = vk::raii::PipelineLayout(LogicalDevice, pipelineLayoutInfo);
+    
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {{.stageCount = 2,
+                                                                                                                       .pStages = shaderStages,
+                                                                                                                       .pVertexInputState = &vertexInputInfo,
+                                                                                                                       .pInputAssemblyState = &inputAssembly,
+                                                                                                                       .pViewportState = &viewportState,
+                                                                                                                       .pRasterizationState = &rasterizer,
+                                                                                                                       .pMultisampleState = &multisampling,
+                                                                                                                       .pColorBlendState = &colorBlending,
+                                                                                                                       .pDynamicState = &dynamicState,
+                                                                                                                       .layout = PipelineLayout,
+                                                                                                                       .renderPass = nullptr},
+                                                                                                                   {.colorAttachmentCount = 1,
+                                                                                                                       .pColorAttachmentFormats = &SurfaceFormat.format}};
+    
+    GraphicsPipeline = vk::raii::Pipeline(LogicalDevice, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+}
+
+vk::raii::ShaderModule CVEDevice::CreateShaderModule(const std::vector<char>& shaderCode) const
+{
+    const auto codeSize =  shaderCode.size() * sizeof(char);
+    const uint32_t* convertedCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
+    
+    vk::ShaderModuleCreateInfo createInfo{.codeSize = codeSize,
+                                          .pCode = convertedCode};
+    
+    vk::raii::ShaderModule shaderModule{LogicalDevice, createInfo};
+    
+    return shaderModule;
+}
+

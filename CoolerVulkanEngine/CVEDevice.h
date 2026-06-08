@@ -53,8 +53,9 @@ private:
     /// SWAP CHAIN END
     
     /// PIPELINE
-    
-    
+    static std::vector<char> ReadShaderFile(const std::string& fileName);
+    void CreateGraphicsPipeline();
+    [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     /// PIPELINE END
     
     /// INSTANCE CREATION VARS
@@ -64,7 +65,7 @@ private:
     static constexpr bool bValidationLayersEnabled = false;
 #else
     static constexpr bool bValidationLayersEnabled = true;
-#endif
+#endif //NDEBUG
     
     std::vector<const char*> RequiredDeviceExtensions = {vk::KHRSwapchainExtensionName};
     
@@ -89,4 +90,9 @@ private:
     vk::SurfaceFormatKHR SurfaceFormat;
     std::vector<vk::raii::ImageView> SwapChainImageViews;
     ///  SWAP CHAIN VARS END
+    
+    /// PIPELINE VARS
+    vk::raii::PipelineLayout PipelineLayout = nullptr;
+    vk::raii::Pipeline GraphicsPipeline = nullptr;
+    ///  PIPELINE VARS END
 };
