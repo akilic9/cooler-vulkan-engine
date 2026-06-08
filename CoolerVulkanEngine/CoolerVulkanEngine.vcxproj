@@ -142,6 +142,13 @@
     <ClInclude Include="CVESwapChain.h" />
     <ClInclude Include="CVEWindow.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Shaders\shaderCompile.bat" />
+    <Content Include="Shaders\triangle.frag" />
+    <Content Include="Shaders\triangle.frag.spv" />
+    <Content Include="Shaders\triangle.vert" />
+    <Content Include="Shaders\triangle.vert.spv" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

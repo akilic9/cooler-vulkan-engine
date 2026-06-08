@@ -24,11 +24,12 @@ CVEDevice::~CVEDevice()
 
 void CVEDevice::CreateVulkanInstance()
 {
-    constexpr vk::ApplicationInfo appInfo{.pApplicationName = "CoolerVulkanEngine",
-                                          .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-                                          .pEngineName = "No Engine",
-                                          .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-                                          .apiVersion = vk::ApiVersion14};
+    constexpr vk::ApplicationInfo appInfo {
+        .pApplicationName   = "CoolerVulkanEngine",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName        = "No Engine",
+        .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion         = vk::ApiVersion14};
     
     const std::vector<const char*>& requiredLayers = GetRequiredLayers();
     CheckLayersSupport(requiredLayers);
@@ -36,11 +37,12 @@ void CVEDevice::CreateVulkanInstance()
     const std::vector<const char*>& requiredExtensions = GetRequiredExtensions();
     CheckExtensionsSupport(requiredExtensions);
     
-    vk::InstanceCreateInfo createInfo{.pApplicationInfo = &appInfo,
-                                      .enabledLayerCount = static_cast<uint32_t>(requiredLayers.size()),
-                                      .ppEnabledLayerNames = requiredLayers.data(),
-                                      .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
-                                      .ppEnabledExtensionNames = requiredExtensions.data()};
+    vk::InstanceCreateInfo createInfo {
+        .pApplicationInfo        = &appInfo,
+        .enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size()),
+        .ppEnabledLayerNames     = requiredLayers.data(),
+        .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames = requiredExtensions.data()};
     
     VulkanInstance = vk::raii::Instance(VulkanInstanceContext, createInfo);
 }
@@ -54,11 +56,12 @@ void CVEDevice::CreateDebugMessenger()
     
     vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
     
-    vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags( vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+    vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
     
-    vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT{.messageSeverity = severityFlags,
-                                                                          .messageType     = messageTypeFlags,
-                                                                          .pfnUserCallback = &DebugCallback};
+    vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT {
+        .messageSeverity = severityFlags,
+        .messageType     = messageTypeFlags,
+        .pfnUserCallback = &DebugCallback};
     
     DebugMessenger = VulkanInstance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfoEXT);
 }
@@ -185,28 +188,29 @@ void CVEDevice::CreateLogicalDevice()
             break;
         }
     }
+    
     if (queueIndex == ~0)
     {
         throw std::runtime_error("Could not find a queue for graphics and present, terminating...");
     }
     
-    vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain =
-    {
+    vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
         {},
-        {.dynamicRendering = true},
-        {.extendedDynamicState = true}
-    };
+        {.dynamicRendering     = true},
+        {.extendedDynamicState = true}};
     
     const float queuePriority = 0.5f;    
-    vk::DeviceQueueCreateInfo deviceQueueCreateInfo {.queueFamilyIndex = queueIndex,
-                                                     .queueCount = 1,
-                                                     .pQueuePriorities = &queuePriority};
+    vk::DeviceQueueCreateInfo deviceQueueCreateInfo {
+        .queueFamilyIndex = queueIndex,
+        .queueCount       = 1,
+        .pQueuePriorities = &queuePriority};
     
-    vk::DeviceCreateInfo deviceCreateInfo{.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
-                                          .queueCreateInfoCount = 1,
-                                          .pQueueCreateInfos = &deviceQueueCreateInfo,
-                                          .enabledExtensionCount = static_cast<uint32_t>(RequiredDeviceExtensions.size()),
-                                          .ppEnabledExtensionNames = RequiredDeviceExtensions.data()};
+    vk::DeviceCreateInfo deviceCreateInfo {
+        .pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
+        .queueCreateInfoCount    = 1,
+        .pQueueCreateInfos       = &deviceQueueCreateInfo,
+        .enabledExtensionCount   = static_cast<uint32_t>(RequiredDeviceExtensions.size()),
+        .ppEnabledExtensionNames = RequiredDeviceExtensions.data()};
     
     LogicalDevice = vk::raii::Device(PhysicalDevice, deviceCreateInfo);
     GraphicsQueue = vk::raii::Queue(LogicalDevice, queueIndex, 0);
@@ -262,18 +266,19 @@ void CVEDevice::CreateSwapChain()
     
     const std::vector<vk::PresentModeKHR>& availablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
     
-    vk::SwapchainCreateInfoKHR swapChainCreateInfo{.surface          = *Surface,
-                                                   .minImageCount    = minImageCount,
-                                                   .imageFormat      = SurfaceFormat.format,
-                                                   .imageColorSpace  = SurfaceFormat.colorSpace,
-                                                   .imageExtent      = Extent,
-                                                   .imageArrayLayers = 1,
-                                                   .imageUsage       = vk::ImageUsageFlagBits::eColorAttachment,
-                                                   .imageSharingMode = vk::SharingMode::eExclusive,
-                                                   .preTransform     = surfaceCapabilities.currentTransform,
-                                                   .compositeAlpha   = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                                                   .presentMode      = ChoosePresentMode(availablePresentModes),
-                                                   .clipped          = true};
+    vk::SwapchainCreateInfoKHR swapChainCreateInfo {
+        .surface = *Surface,
+        .minImageCount    = minImageCount,
+        .imageFormat      = SurfaceFormat.format,
+        .imageColorSpace  = SurfaceFormat.colorSpace,
+        .imageExtent      = Extent,
+        .imageArrayLayers = 1,
+        .imageUsage       = vk::ImageUsageFlagBits::eColorAttachment,
+        .imageSharingMode = vk::SharingMode::eExclusive,
+        .preTransform     = surfaceCapabilities.currentTransform,
+        .compositeAlpha   = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        .presentMode      = ChoosePresentMode(availablePresentModes),
+        .clipped          = true};
     
     swapChainCreateInfo.oldSwapchain = nullptr;
     
@@ -323,8 +328,7 @@ vk::Extent2D CVEDevice::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilit
     int width, height;
     glfwGetFramebufferSize(Window.GetGLFWWindow(), &width, &height);
 
-    return vk::Extent2D
-    {
+    return vk::Extent2D {
         .width = std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
         .height = std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
     };
@@ -344,15 +348,18 @@ void CVEDevice::CreateImageViews()
 {
     assert(SwapChainImageViews.empty());
 
-    vk::ImageViewCreateInfo imageViewCreateInfo{.viewType = vk::ImageViewType::e2D,
-                                                .format = SurfaceFormat.format,
-                                                .components = {.r = vk::ComponentSwizzle::eIdentity,
-                                                                  .g = vk::ComponentSwizzle::eIdentity,
-                                                                  .b = vk::ComponentSwizzle::eIdentity,
-                                                                  .a = vk::ComponentSwizzle::eIdentity},
-                                                .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                                        .levelCount = 1,
-                                                                        .layerCount = 1}};
+    vk::ImageViewCreateInfo imageViewCreateInfo {
+        .viewType = vk::ImageViewType::e2D,
+        .format = SurfaceFormat.format,
+        .components = {
+            .r = vk::ComponentSwizzle::eIdentity,
+            .g = vk::ComponentSwizzle::eIdentity,
+            .b = vk::ComponentSwizzle::eIdentity,
+            .a = vk::ComponentSwizzle::eIdentity},
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .levelCount = 1,
+            .layerCount = 1}};
     
     for (const vk::Image& image : SwapChainImages)
     {
@@ -387,80 +394,89 @@ void CVEDevice::CreateGraphicsPipeline()
     const std::vector<char>& fragmentShader = ReadShaderFile("Shaders/triangle.frag.spv");
     vk::raii::ShaderModule fragmentShaderModule = CreateShaderModule(fragmentShader);
     
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex,
-                                                          .module = vertexShaderModule, 
-                                                          .pName = "main"};
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo {
+        .stage = vk::ShaderStageFlagBits::eVertex,
+        .module = vertexShaderModule, 
+        .pName = "main"};
     
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment,
-                                                          .module = fragmentShaderModule, 
-                                                          .pName = "main"};
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo {
+        .stage = vk::ShaderStageFlagBits::eFragment,
+        .module = fragmentShaderModule, 
+        .pName = "main"};
     
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
     const std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
-    vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-                                                    .pDynamicStates = dynamicStates.data()};
+    vk::PipelineDynamicStateCreateInfo dynamicState {
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates = dynamicStates.data()};
     
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
     
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology = vk::PrimitiveTopology::eTriangleList};
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly {.topology = vk::PrimitiveTopology::eTriangleList};
     
-    vk::Viewport viewport{.x = 0.0f,
-                          .y = 0.0f,
-                          .width = static_cast<float>(Extent.width),
-                          .height = static_cast<float>(Extent.height),
-                          .minDepth = 0.0f,
-                          .maxDepth = 1.0f};
+    vk::Viewport viewport {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(Extent.width),
+        .height = static_cast<float>(Extent.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f};
     
     vk::Rect2D scissor{vk::Offset2D{ 0, 0 }, Extent};
     
-    vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
-                                                      .pViewports = &viewport,
-                                                      .scissorCount = 1,
-                                                      .pScissors = &scissor};
+    vk::PipelineViewportStateCreateInfo viewportState {
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor};
     
-    vk::PipelineRasterizationStateCreateInfo rasterizer{.depthClampEnable = vk::False,
-                                                        .rasterizerDiscardEnable = vk::False,
-                                                        .polygonMode = vk::PolygonMode::eFill,
-                                                        .cullMode = vk::CullModeFlagBits::eBack,
-                                                        .frontFace = vk::FrontFace::eClockwise,
-                                                        .depthBiasEnable = vk::False,
-                                                        .lineWidth = 1.0f};
+    vk::PipelineRasterizationStateCreateInfo rasterizer {
+        .depthClampEnable = vk::False,
+        .rasterizerDiscardEnable = vk::False,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eBack,
+        .frontFace = vk::FrontFace::eClockwise,
+        .depthBiasEnable = vk::False,
+        .lineWidth = 1.0f};
     
     vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
     
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{.blendEnable = vk::True,
-                                                               .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                                                               .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-                                                               .colorBlendOp = vk::BlendOp::eAdd,
-                                                               .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                                                               .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-                                                               .alphaBlendOp = vk::BlendOp::eAdd,
-                                                               .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+        .blendEnable = vk::True,
+        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+        .colorBlendOp = vk::BlendOp::eAdd,
+        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+        .alphaBlendOp = vk::BlendOp::eAdd,
+        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
     
-    vk::PipelineColorBlendStateCreateInfo colorBlending{.logicOpEnable = vk::False,
-                                                        .logicOp = vk::LogicOp::eCopy,
-                                                        .attachmentCount = 1,
-                                                        .pAttachments = &colorBlendAttachment};
+    vk::PipelineColorBlendStateCreateInfo colorBlending {
+        .logicOpEnable = vk::False,
+        .logicOp = vk::LogicOp::eCopy,
+        .attachmentCount = 1,
+        .pAttachments = &colorBlendAttachment};
     
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
 
     PipelineLayout = vk::raii::PipelineLayout(LogicalDevice, pipelineLayoutInfo);
     
-    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {{.stageCount = 2,
-                                                                                                                       .pStages = shaderStages,
-                                                                                                                       .pVertexInputState = &vertexInputInfo,
-                                                                                                                       .pInputAssemblyState = &inputAssembly,
-                                                                                                                       .pViewportState = &viewportState,
-                                                                                                                       .pRasterizationState = &rasterizer,
-                                                                                                                       .pMultisampleState = &multisampling,
-                                                                                                                       .pColorBlendState = &colorBlending,
-                                                                                                                       .pDynamicState = &dynamicState,
-                                                                                                                       .layout = PipelineLayout,
-                                                                                                                       .renderPass = nullptr},
-                                                                                                                   {.colorAttachmentCount = 1,
-                                                                                                                       .pColorAttachmentFormats = &SurfaceFormat.format}};
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
+        {.stageCount = 2,
+            .pStages = shaderStages,
+            .pVertexInputState = &vertexInputInfo,
+            .pInputAssemblyState = &inputAssembly,
+            .pViewportState = &viewportState,
+            .pRasterizationState = &rasterizer,
+            .pMultisampleState = &multisampling,
+            .pColorBlendState = &colorBlending,
+            .pDynamicState = &dynamicState,
+            .layout = PipelineLayout,
+            .renderPass = nullptr},
+        {.colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &SurfaceFormat.format}};
     
     GraphicsPipeline = vk::raii::Pipeline(LogicalDevice, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
 }
@@ -470,11 +486,9 @@ vk::raii::ShaderModule CVEDevice::CreateShaderModule(const std::vector<char>& sh
     const auto codeSize =  shaderCode.size() * sizeof(char);
     const uint32_t* convertedCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
     
-    vk::ShaderModuleCreateInfo createInfo{.codeSize = codeSize,
-                                          .pCode = convertedCode};
+    vk::ShaderModuleCreateInfo createInfo{.codeSize = codeSize, .pCode = convertedCode};
     
     vk::raii::ShaderModule shaderModule{LogicalDevice, createInfo};
     
     return shaderModule;
 }
-
