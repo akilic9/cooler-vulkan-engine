@@ -19,28 +19,15 @@ public:
     CVEDevice& operator=(CVEDevice&&) = delete;
 
 private:
-    /// INSTANCE CREATION
-    void CreateVulkanInstance();
     void CreateDebugMessenger();
+    static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, 
+                                                      const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     
-    std::vector<char const*> GetRequiredLayers();
-    std::vector<const char*> GetRequiredExtensions();
-    
-    void CheckLayersSupport(const std::vector<const char*>& inLayers);
-    void CheckExtensionsSupport(const std::vector<const char*>& inExtensions);
-    
-    static void PrintExtensions(const std::vector<vk::ExtensionProperties>& inAvailableExtensions, const std::vector<const char*>& inRequiredExtensions);
-    static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type,
-                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-    /// INSTANCE CREATION END
-    
-    /// PHYSICAL DEVICE
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     bool IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice);
     
     void CreateSurface();
-    /// PHYSICAL DEVICE END
     
     /// SWAP CHAIN
     void CreateSwapChain();
@@ -58,21 +45,9 @@ private:
     [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     /// PIPELINE END
     
-    /// INSTANCE CREATION VARS
-    std::vector<const char*> ValidationLayers = {"VK_LAYER_KHRONOS_validation"};
-    
-#ifdef NDEBUG
-    static constexpr bool bValidationLayersEnabled = false;
-#else
-    static constexpr bool bValidationLayersEnabled = true;
-#endif //NDEBUG
-    
-    std::vector<const char*> RequiredDeviceExtensions = {vk::KHRSwapchainExtensionName};
-    
     vk::raii::Context VulkanInstanceContext;
     vk::raii::Instance VulkanInstance = nullptr;
     vk::raii::DebugUtilsMessengerEXT DebugMessenger = nullptr;
-    /// INSTANCE CREATION VARS END
     
     /// PHYSICAL DEVICE VARS
     CVEWindow& Window;

@@ -4,12 +4,13 @@
 #include <iostream>
 #include <fstream>
 
+#include "CVEInstanceUtil.h"
 #include "CVEWindow.h"
 
 CVEDevice::CVEDevice(CVEWindow& inWindow)
     : Window(inWindow)
 {
-    CreateVulkanInstance();
+    VulkanInstance = CVEInstanceUtil::CreateVulkanInstance(VulkanInstanceContext);
     CreateDebugMessenger();
     CreateSurface();
     PickPhysicalDevice();
@@ -22,34 +23,9 @@ CVEDevice::~CVEDevice()
 {
 }
 
-void CVEDevice::CreateVulkanInstance()
-{
-    constexpr vk::ApplicationInfo appInfo {
-        .pApplicationName   = "CoolerVulkanEngine",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName        = "No Engine",
-        .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion         = vk::ApiVersion14};
-    
-    const std::vector<const char*>& requiredLayers = GetRequiredLayers();
-    CheckLayersSupport(requiredLayers);
-    
-    const std::vector<const char*>& requiredExtensions = GetRequiredExtensions();
-    CheckExtensionsSupport(requiredExtensions);
-    
-    vk::InstanceCreateInfo createInfo {
-        .pApplicationInfo        = &appInfo,
-        .enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size()),
-        .ppEnabledLayerNames     = requiredLayers.data(),
-        .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
-        .ppEnabledExtensionNames = requiredExtensions.data()};
-    
-    VulkanInstance = vk::raii::Instance(VulkanInstanceContext, createInfo);
-}
-
 void CVEDevice::CreateDebugMessenger()
 {
-    if (!bValidationLayersEnabled)
+    if (!CVEInstanceUtil::bValidationLayersEnabled)
     {
         return;
     }
@@ -64,91 +40,6 @@ void CVEDevice::CreateDebugMessenger()
         .pfnUserCallback = &DebugCallback};
     
     DebugMessenger = VulkanInstance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfoEXT);
-}
-
-std::vector<char const*> CVEDevice::GetRequiredLayers()
-{
-    std::vector<char const*> requiredLayers;
-
-    if (bValidationLayersEnabled)
-    {
-        requiredLayers.assign(ValidationLayers.begin(), ValidationLayers.end());
-    }
-    
-    return requiredLayers;
-}
-
-std::vector<char const*> CVEDevice::GetRequiredExtensions()
-{
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-    
-    if (bValidationLayersEnabled)
-    {
-        extensions.push_back(vk::EXTDebugUtilsExtensionName);
-    }
-    
-    return extensions;
-}
-
-void CVEDevice::CheckLayersSupport(const std::vector<char const*>& inLayers)
-{
-    const std::vector<vk::LayerProperties>& layerProperties = VulkanInstanceContext.enumerateInstanceLayerProperties();
-    
-    //TODO: these nested lambdas may be hard to read
-    auto unsupportedLayerIt = std::ranges::find_if(inLayers, [&layerProperties](const char* requiredLayer)
-    {
-        return std::ranges::none_of(layerProperties, [requiredLayer](const vk::LayerProperties& layerProperty)
-        {
-            return strcmp(layerProperty.layerName, requiredLayer) == 0;
-        });
-    });
-    
-    if (unsupportedLayerIt != inLayers.end())
-    {
-        throw std::runtime_error("Required layer not supported: " + std::string(*unsupportedLayerIt));
-    }
-}
-
-void CVEDevice::CheckExtensionsSupport(const std::vector<char const*>& inExtensions)
-{
-    const std::vector<vk::ExtensionProperties>& extensionProperties = VulkanInstanceContext.enumerateInstanceExtensionProperties();
-    
-#ifdef _DEBUG
-    PrintExtensions(extensionProperties, inExtensions);
-#endif // _DEBUG
-
-    //TODO: these nested lambdas may be hard to read
-    auto unsupportedPropertyIt = std::ranges::find_if(inExtensions, [&extensionProperties](const char* requiredExtension)
-    {
-        return std::ranges::none_of(extensionProperties, [requiredExtension](const vk::ExtensionProperties& extensionProperty)
-        {
-            return strcmp(extensionProperty.extensionName, requiredExtension) == 0;
-        });
-    });
-    
-    if (unsupportedPropertyIt != inExtensions.end())
-    {
-        throw std::runtime_error("Required extension not supported: " + std::string(*unsupportedPropertyIt));
-    }
-}
-
-void CVEDevice::PrintExtensions(const std::vector<vk::ExtensionProperties>& inAvailableExtensions, const std::vector<char const*>& inRequiredExtensions)
-{
-    std::cout << "Available extensions:\n";
-
-    for (const vk::ExtensionProperties& availableExtension : inAvailableExtensions)
-    {
-        std::cout << '\t' << availableExtension.extensionName << '\n';
-    }
-    
-    std::cout << "Required extensions:\n";
-    for (const char* requiredExtension : inRequiredExtensions)
-    {
-        std::cout << '\t' << requiredExtension << '\n';
-    }
 }
 
 vk::Bool32 CVEDevice::DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type,
@@ -209,8 +100,8 @@ void CVEDevice::CreateLogicalDevice()
         .pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
-        .enabledExtensionCount   = static_cast<uint32_t>(RequiredDeviceExtensions.size()),
-        .ppEnabledExtensionNames = RequiredDeviceExtensions.data()};
+        .enabledExtensionCount   = static_cast<uint32_t>(CVEInstanceUtil::RequiredDeviceExtensions.size()),
+        .ppEnabledExtensionNames = CVEInstanceUtil::RequiredDeviceExtensions.data()};
     
     LogicalDevice = vk::raii::Device(PhysicalDevice, deviceCreateInfo);
     GraphicsQueue = vk::raii::Queue(LogicalDevice, queueIndex, 0);
@@ -229,7 +120,7 @@ bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
     const std::vector<vk::ExtensionProperties>& availableDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
     
     //TODO: these nested lambdas may be hard to read
-    const bool bSupportsAllRequiredExtensions = std::ranges::all_of(RequiredDeviceExtensions, [&availableDeviceExtensions](const char* requiredDeviceExtension)
+    const bool bSupportsAllRequiredExtensions = std::ranges::all_of(CVEInstanceUtil::RequiredDeviceExtensions, [&availableDeviceExtensions](const char* requiredDeviceExtension)
     {
         return std::ranges::any_of(availableDeviceExtensions, [requiredDeviceExtension](const vk::ExtensionProperties& availableDeviceExtension)
         {
@@ -267,7 +158,7 @@ void CVEDevice::CreateSwapChain()
     const std::vector<vk::PresentModeKHR>& availablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
     
     vk::SwapchainCreateInfoKHR swapChainCreateInfo {
-        .surface = *Surface,
+        .surface          = *Surface,
         .minImageCount    = minImageCount,
         .imageFormat      = SurfaceFormat.format,
         .imageColorSpace  = SurfaceFormat.colorSpace,
@@ -349,8 +240,8 @@ void CVEDevice::CreateImageViews()
     assert(SwapChainImageViews.empty());
 
     vk::ImageViewCreateInfo imageViewCreateInfo {
-        .viewType = vk::ImageViewType::e2D,
-        .format = SurfaceFormat.format,
+        .viewType   = vk::ImageViewType::e2D,
+        .format     = SurfaceFormat.format,
         .components = {
             .r = vk::ComponentSwizzle::eIdentity,
             .g = vk::ComponentSwizzle::eIdentity,
@@ -395,14 +286,14 @@ void CVEDevice::CreateGraphicsPipeline()
     vk::raii::ShaderModule fragmentShaderModule = CreateShaderModule(fragmentShader);
     
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo {
-        .stage = vk::ShaderStageFlagBits::eVertex,
+        .stage  = vk::ShaderStageFlagBits::eVertex,
         .module = vertexShaderModule, 
-        .pName = "main"};
+        .pName  = "main"};
     
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo {
-        .stage = vk::ShaderStageFlagBits::eFragment,
+        .stage  = vk::ShaderStageFlagBits::eFragment,
         .module = fragmentShaderModule, 
-        .pName = "main"};
+        .pName  = "main"};
     
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
@@ -410,17 +301,17 @@ void CVEDevice::CreateGraphicsPipeline()
 
     vk::PipelineDynamicStateCreateInfo dynamicState {
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-        .pDynamicStates = dynamicStates.data()};
+        .pDynamicStates    = dynamicStates.data()};
     
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
     
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly {.topology = vk::PrimitiveTopology::eTriangleList};
     
     vk::Viewport viewport {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(Extent.width),
-        .height = static_cast<float>(Extent.height),
+        .x        = 0.0f,
+        .y        = 0.0f,
+        .width    = static_cast<float>(Extent.width),
+        .height   = static_cast<float>(Extent.height),
         .minDepth = 0.0f,
         .maxDepth = 1.0f};
     
@@ -428,54 +319,54 @@ void CVEDevice::CreateGraphicsPipeline()
     
     vk::PipelineViewportStateCreateInfo viewportState {
         .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor};
+        .pViewports    = &viewport,
+        .scissorCount  = 1,
+        .pScissors     = &scissor};
     
     vk::PipelineRasterizationStateCreateInfo rasterizer {
-        .depthClampEnable = vk::False,
+        .depthClampEnable        = vk::False,
         .rasterizerDiscardEnable = vk::False,
-        .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eClockwise,
-        .depthBiasEnable = vk::False,
-        .lineWidth = 1.0f};
+        .polygonMode             = vk::PolygonMode::eFill,
+        .cullMode                = vk::CullModeFlagBits::eBack,
+        .frontFace               = vk::FrontFace::eClockwise,
+        .depthBiasEnable         = vk::False,
+        .lineWidth               = 1.0f};
     
     vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
     
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-        .blendEnable = vk::True,
+        .blendEnable         = vk::True,
         .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
         .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-        .colorBlendOp = vk::BlendOp::eAdd,
+        .colorBlendOp        = vk::BlendOp::eAdd,
         .srcAlphaBlendFactor = vk::BlendFactor::eOne,
         .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-        .alphaBlendOp = vk::BlendOp::eAdd,
-        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+        .alphaBlendOp        = vk::BlendOp::eAdd,
+        .colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
     
     vk::PipelineColorBlendStateCreateInfo colorBlending {
-        .logicOpEnable = vk::False,
-        .logicOp = vk::LogicOp::eCopy,
+        .logicOpEnable   = vk::False,
+        .logicOp         = vk::LogicOp::eCopy,
         .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment};
+        .pAttachments    = &colorBlendAttachment};
     
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
 
     PipelineLayout = vk::raii::PipelineLayout(LogicalDevice, pipelineLayoutInfo);
     
     vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
-        {.stageCount = 2,
-            .pStages = shaderStages,
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicState,
-            .layout = PipelineLayout,
-            .renderPass = nullptr},
-        {.colorAttachmentCount = 1,
+        {.stageCount              = 2,
+            .pStages                 = shaderStages,
+            .pVertexInputState       = &vertexInputInfo,
+            .pInputAssemblyState     = &inputAssembly,
+            .pViewportState          = &viewportState,
+            .pRasterizationState     = &rasterizer,
+            .pMultisampleState       = &multisampling,
+            .pColorBlendState        = &colorBlending,
+            .pDynamicState           = &dynamicState,
+            .layout                  = PipelineLayout,
+            .renderPass              = nullptr},
+        {.colorAttachmentCount    = 1,
             .pColorAttachmentFormats = &SurfaceFormat.format}};
     
     GraphicsPipeline = vk::raii::Pipeline(LogicalDevice, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
