@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <glfw3.h>
 
 class CVEWindow
@@ -13,6 +14,8 @@ public:
     bool GetShouldClose() const;
     void Terminate();
     GLFWwindow* GetGLFWWindow() const;
+    
+    std::array<int, 2> GetWindowExtent() const;
     
 private:
     GLFWwindow* Window = nullptr;

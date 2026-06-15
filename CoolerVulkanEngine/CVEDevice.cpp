@@ -15,12 +15,29 @@ CVEDevice::CVEDevice(CVEWindow& inWindow)
     CreateSurface();
     PickPhysicalDevice();
     CreateLogicalDevice();
-    CreateSwapChain();
-    CreateGraphicsPipeline();
 }
 
 CVEDevice::~CVEDevice()
 {
+}
+
+const vk::raii::Device& CVEDevice::GetLogicalDevice() const
+{
+    return LogicalDevice;
+}
+
+const vk::raii::SurfaceKHR& CVEDevice::GetSurface() const
+{
+    return Surface;
+}
+
+CVESwapChainSupportDetails CVEDevice::GetSwapChainSupportDetails() const
+{
+    CVESwapChainSupportDetails details;    
+    details.SurfaceCapabilities = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);    
+    details.AvailableFormats = PhysicalDevice.getSurfaceFormatsKHR(*Surface);
+    details.AvailablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
+    return details;
 }
 
 void CVEDevice::CreateDebugMessenger()
@@ -143,243 +160,4 @@ void CVEDevice::CreateSurface()
         throw std::runtime_error("Failed to create window surface!");
     }
     Surface = vk::raii::SurfaceKHR(VulkanInstance, surface);
-}
-
-// TODO: Move swapchain stuff to it's own file
-void CVEDevice::CreateSwapChain()
-{
-    const vk::SurfaceCapabilitiesKHR& surfaceCapabilities = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);
-    Extent = ChooseExtent(surfaceCapabilities);
-    uint32_t minImageCount = ChooseMinImageCount(surfaceCapabilities);
-
-    const std::vector<vk::SurfaceFormatKHR>& availableFormats = PhysicalDevice.getSurfaceFormatsKHR(*Surface);
-    SurfaceFormat = ChooseSurfaceFormat(availableFormats);
-    
-    const std::vector<vk::PresentModeKHR>& availablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
-    
-    vk::SwapchainCreateInfoKHR swapChainCreateInfo {
-        .surface          = *Surface,
-        .minImageCount    = minImageCount,
-        .imageFormat      = SurfaceFormat.format,
-        .imageColorSpace  = SurfaceFormat.colorSpace,
-        .imageExtent      = Extent,
-        .imageArrayLayers = 1,
-        .imageUsage       = vk::ImageUsageFlagBits::eColorAttachment,
-        .imageSharingMode = vk::SharingMode::eExclusive,
-        .preTransform     = surfaceCapabilities.currentTransform,
-        .compositeAlpha   = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-        .presentMode      = ChoosePresentMode(availablePresentModes),
-        .clipped          = true};
-    
-    swapChainCreateInfo.oldSwapchain = nullptr;
-    
-    SwapChain = vk::raii::SwapchainKHR(LogicalDevice, swapChainCreateInfo);
-    SwapChainImages = SwapChain.getImages();
-}
-
-vk::SurfaceFormatKHR CVEDevice::ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
-{
-    const auto formatItr = std::ranges::find_if(availableFormats, [](const vk::SurfaceFormatKHR& format)
-    {
-        return format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
-    });
-    
-    return formatItr != availableFormats.end() ? *formatItr : availableFormats[0];
-}
-
-vk::PresentModeKHR CVEDevice::ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
-{
-    const bool bSupportsFIFO = std::ranges::any_of(availablePresentModes, [](const vk::PresentModeKHR& presentMode)
-    {
-        return presentMode == vk::PresentModeKHR::eFifo;
-    });
-    
-    assert(bSupportsFIFO);
-    
-    const bool bSupportsMailbox = std::ranges::any_of(availablePresentModes, [](const vk::PresentModeKHR& presentMode)
-    {
-        return vk::PresentModeKHR::eMailbox == presentMode;
-    });
-
-#ifdef _DEBUG
-    const char* presentModeText = bSupportsMailbox ? "Mailbox" : "FIFO";
-    std::cout << "Present mode: " << presentModeText << '\n';
-#endif //_DEBUG
-    
-    return bSupportsMailbox ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
-}
-
-vk::Extent2D CVEDevice::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
-{
-    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-    {
-        return capabilities.currentExtent;
-    }
-    
-    int width, height;
-    glfwGetFramebufferSize(Window.GetGLFWWindow(), &width, &height);
-
-    return vk::Extent2D {
-        .width = std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-        .height = std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
-    };
-}
-
-uint32_t CVEDevice::ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabilities)
-{
-    uint32_t minImageCount = std::max(3u, capabilities.minImageCount);
-    if ((0 < capabilities.maxImageCount) && (capabilities.maxImageCount < minImageCount))
-    {
-        minImageCount = capabilities.maxImageCount;
-    }
-    return minImageCount;
-}
-
-void CVEDevice::CreateImageViews()
-{
-    assert(SwapChainImageViews.empty());
-
-    vk::ImageViewCreateInfo imageViewCreateInfo {
-        .viewType   = vk::ImageViewType::e2D,
-        .format     = SurfaceFormat.format,
-        .components = {
-            .r = vk::ComponentSwizzle::eIdentity,
-            .g = vk::ComponentSwizzle::eIdentity,
-            .b = vk::ComponentSwizzle::eIdentity,
-            .a = vk::ComponentSwizzle::eIdentity},
-        .subresourceRange = {
-            .aspectMask = vk::ImageAspectFlagBits::eColor,
-            .levelCount = 1,
-            .layerCount = 1}};
-    
-    for (const vk::Image& image : SwapChainImages)
-    {
-        imageViewCreateInfo.image = image;
-        SwapChainImageViews.emplace_back(LogicalDevice, imageViewCreateInfo);
-    }
-}
-
-std::vector<char> CVEDevice::ReadShaderFile(const std::string& fileName)
-{
-    std::ifstream file(fileName, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open())
-    {
-        throw std::runtime_error("Failed to open shader file: " + fileName);
-    }
-    
-    std::vector<char> fileBuffer(file.tellg());
-    file.seekg(0, std::ios::beg);
-    file.read(fileBuffer.data(), static_cast<std::streamsize>(fileBuffer.size()));
-    
-    file.close();
-
-    return fileBuffer;
-}
-
-void CVEDevice::CreateGraphicsPipeline()
-{
-    const std::vector<char>& vertexShader = ReadShaderFile("Shaders/triangle.vert.spv");
-    vk::raii::ShaderModule vertexShaderModule = CreateShaderModule(vertexShader);
-    
-    const std::vector<char>& fragmentShader = ReadShaderFile("Shaders/triangle.frag.spv");
-    vk::raii::ShaderModule fragmentShaderModule = CreateShaderModule(fragmentShader);
-    
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo {
-        .stage  = vk::ShaderStageFlagBits::eVertex,
-        .module = vertexShaderModule, 
-        .pName  = "main"};
-    
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo {
-        .stage  = vk::ShaderStageFlagBits::eFragment,
-        .module = fragmentShaderModule, 
-        .pName  = "main"};
-    
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    
-    const std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-
-    vk::PipelineDynamicStateCreateInfo dynamicState {
-        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-        .pDynamicStates    = dynamicStates.data()};
-    
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-    
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly {.topology = vk::PrimitiveTopology::eTriangleList};
-    
-    vk::Viewport viewport {
-        .x        = 0.0f,
-        .y        = 0.0f,
-        .width    = static_cast<float>(Extent.width),
-        .height   = static_cast<float>(Extent.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f};
-    
-    vk::Rect2D scissor{vk::Offset2D{ 0, 0 }, Extent};
-    
-    vk::PipelineViewportStateCreateInfo viewportState {
-        .viewportCount = 1,
-        .pViewports    = &viewport,
-        .scissorCount  = 1,
-        .pScissors     = &scissor};
-    
-    vk::PipelineRasterizationStateCreateInfo rasterizer {
-        .depthClampEnable        = vk::False,
-        .rasterizerDiscardEnable = vk::False,
-        .polygonMode             = vk::PolygonMode::eFill,
-        .cullMode                = vk::CullModeFlagBits::eBack,
-        .frontFace               = vk::FrontFace::eClockwise,
-        .depthBiasEnable         = vk::False,
-        .lineWidth               = 1.0f};
-    
-    vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
-    
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-        .blendEnable         = vk::True,
-        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-        .colorBlendOp        = vk::BlendOp::eAdd,
-        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-        .alphaBlendOp        = vk::BlendOp::eAdd,
-        .colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
-    
-    vk::PipelineColorBlendStateCreateInfo colorBlending {
-        .logicOpEnable   = vk::False,
-        .logicOp         = vk::LogicOp::eCopy,
-        .attachmentCount = 1,
-        .pAttachments    = &colorBlendAttachment};
-    
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
-
-    PipelineLayout = vk::raii::PipelineLayout(LogicalDevice, pipelineLayoutInfo);
-    
-    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
-        {.stageCount              = 2,
-            .pStages                 = shaderStages,
-            .pVertexInputState       = &vertexInputInfo,
-            .pInputAssemblyState     = &inputAssembly,
-            .pViewportState          = &viewportState,
-            .pRasterizationState     = &rasterizer,
-            .pMultisampleState       = &multisampling,
-            .pColorBlendState        = &colorBlending,
-            .pDynamicState           = &dynamicState,
-            .layout                  = PipelineLayout,
-            .renderPass              = nullptr},
-        {.colorAttachmentCount    = 1,
-            .pColorAttachmentFormats = &SurfaceFormat.format}};
-    
-    GraphicsPipeline = vk::raii::Pipeline(LogicalDevice, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
-}
-
-vk::raii::ShaderModule CVEDevice::CreateShaderModule(const std::vector<char>& shaderCode) const
-{
-    const auto codeSize =  shaderCode.size() * sizeof(char);
-    const uint32_t* convertedCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
-    
-    vk::ShaderModuleCreateInfo createInfo{.codeSize = codeSize, .pCode = convertedCode};
-    
-    vk::raii::ShaderModule shaderModule{LogicalDevice, createInfo};
-    
-    return shaderModule;
 }

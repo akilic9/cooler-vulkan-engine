@@ -7,6 +7,13 @@
 
 class CVEWindow;
 
+struct CVESwapChainSupportDetails
+{
+    vk::SurfaceCapabilitiesKHR SurfaceCapabilities;
+    std::vector<vk::SurfaceFormatKHR> AvailableFormats;
+    std::vector<vk::PresentModeKHR> AvailablePresentModes;
+};
+
 class CVEDevice
 {
 public:
@@ -17,6 +24,10 @@ public:
     CVEDevice& operator=(const CVEDevice&) = delete;
     CVEDevice(CVEDevice&&) = delete;
     CVEDevice& operator=(CVEDevice&&) = delete;
+    
+    const vk::raii::Device& GetLogicalDevice() const;
+    const vk::raii::SurfaceKHR& GetSurface() const;
+    CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
 
 private:
     void CreateDebugMessenger();
@@ -29,45 +40,14 @@ private:
     
     void CreateSurface();
     
-    /// SWAP CHAIN
-    void CreateSwapChain();
-    vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
-    vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
-    vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-    uint32_t ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabilities);
-    
-    void CreateImageViews();
-    /// SWAP CHAIN END
-    
-    /// PIPELINE
-    static std::vector<char> ReadShaderFile(const std::string& fileName);
-    void CreateGraphicsPipeline();
-    [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
-    /// PIPELINE END
-    
     vk::raii::Context VulkanInstanceContext;
     vk::raii::Instance VulkanInstance = nullptr;
     vk::raii::DebugUtilsMessengerEXT DebugMessenger = nullptr;
     
-    /// PHYSICAL DEVICE VARS
     CVEWindow& Window;
     vk::raii::PhysicalDevice PhysicalDevice = nullptr;
     vk::raii::Device LogicalDevice = nullptr;
     vk::raii::Queue GraphicsQueue = nullptr;
     
     vk::raii::SurfaceKHR Surface = nullptr;
-    /// PHYSICAL DEVICE VARS END
-    
-    /// SWAP CHAIN VARS
-    vk::raii::SwapchainKHR SwapChain = nullptr;
-    std::vector<vk::Image> SwapChainImages;
-    vk::Extent2D Extent;
-    vk::SurfaceFormatKHR SurfaceFormat;
-    std::vector<vk::raii::ImageView> SwapChainImageViews;
-    ///  SWAP CHAIN VARS END
-    
-    /// PIPELINE VARS
-    vk::raii::PipelineLayout PipelineLayout = nullptr;
-    vk::raii::Pipeline GraphicsPipeline = nullptr;
-    ///  PIPELINE VARS END
 };

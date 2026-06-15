@@ -28,3 +28,10 @@ GLFWwindow* CVEWindow::GetGLFWWindow() const
 {
     return Window;
 }
+
+std::array<int, 2> CVEWindow::GetWindowExtent() const
+{
+    int width, height;
+    glfwGetFramebufferSize(Window, &width, &height);
+    return { width, height };
+}
