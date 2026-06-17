@@ -14,7 +14,13 @@ void CVEApplication::Update()
     while (!Window.GetShouldClose())
     {
         glfwPollEvents();
+        DrawFrame();
     }
+}
+
+void CVEApplication::DrawFrame()
+{
+    
 }
 
 void CVEApplication::TerminateWindow()

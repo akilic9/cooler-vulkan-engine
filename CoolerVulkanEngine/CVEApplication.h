@@ -17,6 +17,7 @@ public:
 
 private:
     void Update();
+    void DrawFrame();
     void TerminateWindow();
     
     // TODO: Pipeline logic should not live here, just not clear where to fit it yet
