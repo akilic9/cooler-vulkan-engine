@@ -28,6 +28,7 @@ public:
     const vk::raii::Device& GetLogicalDevice() const;
     const vk::raii::SurfaceKHR& GetSurface() const;
     CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
+    const vk::raii::CommandPool& GetCommandPool() const;
 
 private:
     void CreateDebugMessenger();
@@ -35,10 +36,13 @@ private:
                                                       const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     
     void PickPhysicalDevice();
+    void FindQueueFamilyIndex();
     void CreateLogicalDevice();
     bool IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice);
     
     void CreateSurface();
+    
+    void CreateCommandPool();
     
     vk::raii::Context VulkanInstanceContext;
     vk::raii::Instance VulkanInstance = nullptr;
@@ -46,8 +50,11 @@ private:
     
     CVEWindow& Window;
     vk::raii::PhysicalDevice PhysicalDevice = nullptr;
+    uint32_t QueueFamilyIndex = ~0;
     vk::raii::Device LogicalDevice = nullptr;
     vk::raii::Queue GraphicsQueue = nullptr;
     
     vk::raii::SurfaceKHR Surface = nullptr;
+    
+    vk::raii::CommandPool CommandPool = nullptr;
 };

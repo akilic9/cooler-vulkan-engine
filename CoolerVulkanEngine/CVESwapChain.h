@@ -14,6 +14,8 @@ public:
     CVESwapChain(const CVEDevice& device, const CVEWindow& window);
     const vk::SurfaceFormatKHR& GetSurfaceFormat() const;
     const vk::Extent2D& GetExtent() const;
+    const std::vector<vk::Image>& GetSwapChainImages() const;
+    const std::vector<vk::raii::ImageView>& GetSwapChainImageViews() const;
     
 private:
     vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent);

@@ -40,6 +40,11 @@ CVESwapChainSupportDetails CVEDevice::GetSwapChainSupportDetails() const
     return details;
 }
 
+const vk::raii::CommandPool& CVEDevice::GetCommandPool() const
+{
+    return CommandPool;
+}
+
 void CVEDevice::CreateDebugMessenger()
 {
     if (!CVEInstanceUtil::bValidationLayersEnabled)
@@ -83,24 +88,28 @@ void CVEDevice::PickPhysicalDevice()
     PhysicalDevice = *deviceIt;
 }
 
-void CVEDevice::CreateLogicalDevice()
+void CVEDevice::FindQueueFamilyIndex()
 {
     const std::vector<vk::QueueFamilyProperties>& queueFamilyProperties = PhysicalDevice.getQueueFamilyProperties();
 
-    uint32_t queueIndex = ~0;
     for (uint32_t qfpIndex = 0; qfpIndex < queueFamilyProperties.size(); qfpIndex++)
     {
         if ((queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eGraphics) && PhysicalDevice.getSurfaceSupportKHR(qfpIndex, *Surface))
         {
-            queueIndex = qfpIndex;
+            QueueFamilyIndex = qfpIndex;
             break;
         }
     }
-    
-    if (queueIndex == ~0)
+
+    if (QueueFamilyIndex == ~0)
     {
         throw std::runtime_error("Could not find a queue for graphics and present, terminating...");
     }
+}
+
+void CVEDevice::CreateLogicalDevice()
+{
+    FindQueueFamilyIndex();
     
     vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
         {},
@@ -109,7 +118,7 @@ void CVEDevice::CreateLogicalDevice()
     
     const float queuePriority = 0.5f;    
     vk::DeviceQueueCreateInfo deviceQueueCreateInfo {
-        .queueFamilyIndex = queueIndex,
+        .queueFamilyIndex = QueueFamilyIndex,
         .queueCount       = 1,
         .pQueuePriorities = &queuePriority};
     
@@ -121,7 +130,7 @@ void CVEDevice::CreateLogicalDevice()
         .ppEnabledExtensionNames = CVEInstanceUtil::RequiredDeviceExtensions.data()};
     
     LogicalDevice = vk::raii::Device(PhysicalDevice, deviceCreateInfo);
-    GraphicsQueue = vk::raii::Queue(LogicalDevice, queueIndex, 0);
+    GraphicsQueue = vk::raii::Queue(LogicalDevice, QueueFamilyIndex, 0);
 }
 
 bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
@@ -160,4 +169,13 @@ void CVEDevice::CreateSurface()
         throw std::runtime_error("Failed to create window surface!");
     }
     Surface = vk::raii::SurfaceKHR(VulkanInstance, surface);
+}
+
+void CVEDevice::CreateCommandPool()
+{
+    vk::CommandPoolCreateInfo poolCreateInfo {
+        .flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+        .queueFamilyIndex = QueueFamilyIndex};
+    
+    CommandPool = vk::raii::CommandPool(LogicalDevice, poolCreateInfo);
 }

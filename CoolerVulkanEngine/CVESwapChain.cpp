@@ -44,6 +44,16 @@ const vk::Extent2D& CVESwapChain::GetExtent() const
     return Extent;
 }
 
+const std::vector<vk::Image>& CVESwapChain::GetSwapChainImages() const
+{
+    return SwapChainImages;
+}
+
+const std::vector<vk::raii::ImageView>& CVESwapChain::GetSwapChainImageViews() const
+{
+    return SwapChainImageViews;
+}
+
 vk::Extent2D CVESwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent)
 {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())

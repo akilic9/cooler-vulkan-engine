@@ -5,6 +5,7 @@
 void CVEApplication::Run()
 {
     CreateGraphicsPipeline();
+    CreateCommandBuffer();
     Update();
 }
 
@@ -21,6 +22,7 @@ void CVEApplication::TerminateWindow()
     Window.Terminate();
 }
 
+// TODO: Pipeline logic should not live here, just not clear where to fit it yet
 std::vector<char> CVEApplication::ReadShaderFile(const std::string& fileName)
 {
     std::ifstream file(fileName, std::ios::ate | std::ios::binary);
@@ -144,4 +146,103 @@ vk::raii::ShaderModule CVEApplication::CreateShaderModule(const std::vector<char
     vk::raii::ShaderModule shaderModule{Device.GetLogicalDevice(), createInfo};
     
     return shaderModule;
+}
+
+void CVEApplication::CreateCommandBuffer()
+{
+    vk::CommandBufferAllocateInfo allocateInfo { 
+        .commandPool = Device.GetCommandPool(),
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1};
+
+    CommandBuffer = std::move(vk::raii::CommandBuffers(Device.GetLogicalDevice(), allocateInfo).front());
+}
+
+void CVEApplication::RecordCommandBuffer(const uint32_t imageIndex)
+{
+    CommandBuffer.begin({});
+    
+    TransitionImageLayout(imageIndex,
+                 vk::ImageLayout::eUndefined,
+                vk::ImageLayout::eColorAttachmentOptimal,
+         {},
+         vk::AccessFlagBits2::eColorAttachmentWrite,
+          vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+          vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+    
+    vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+
+    const std::vector<vk::raii::ImageView>& SwapChainImageViews = SwapChain.GetSwapChainImageViews();
+
+    const vk::Extent2D& SwapChainExtent = SwapChain.GetExtent();
+    
+    vk::RenderingAttachmentInfo attachmentInfo = {
+        .imageView   = SwapChainImageViews[imageIndex],
+        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .loadOp      = vk::AttachmentLoadOp::eClear,
+        .storeOp     = vk::AttachmentStoreOp::eStore,
+        .clearValue  = clearColor};
+    
+    vk::RenderingInfo renderingInfo = {
+        .renderArea           = {
+            .offset = {0, 0},
+            .extent = SwapChainExtent},
+        .layerCount           = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments    = &attachmentInfo};
+    
+    CommandBuffer.beginRendering(renderingInfo);
+    
+    CommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *GraphicsPipeline);
+    
+    CommandBuffer.setViewport(0, 
+                   vk::Viewport(0.0f, 0.0f, static_cast<float>(SwapChainExtent.width),
+                                           static_cast<float>(SwapChainExtent.height), 0.0f, 1.0f));
+    
+    CommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), SwapChainExtent));
+    
+    CommandBuffer.draw(3, 1, 0, 0);
+    
+    CommandBuffer.endRendering();
+    
+    TransitionImageLayout(imageIndex,
+                 vk::ImageLayout::eColorAttachmentOptimal,
+                vk::ImageLayout::ePresentSrcKHR,
+         vk::AccessFlagBits2::eColorAttachmentWrite,
+         {},
+          vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+          vk::PipelineStageFlagBits2::eBottomOfPipe);
+    
+    CommandBuffer.end();
+}
+
+void CVEApplication::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout old_layout, vk::ImageLayout new_layout,
+                                           vk::AccessFlags2 src_access_mask, vk::AccessFlags2 dst_access_mask,
+                                           vk::PipelineStageFlags2 src_stage_mask, vk::PipelineStageFlags2 dst_stage_mask)
+{
+    const std::vector<vk::Image>& SwapChainImages = SwapChain.GetSwapChainImages();
+    
+    vk::ImageMemoryBarrier2 barrier = {
+        .srcStageMask        = src_stage_mask,
+        .srcAccessMask       = src_access_mask,
+        .dstStageMask        = dst_stage_mask,
+        .dstAccessMask       = dst_access_mask,
+        .oldLayout           = old_layout,
+        .newLayout           = new_layout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image               = SwapChainImages[imageIndex],
+        .subresourceRange    = {
+            .aspectMask     = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1}};
+    
+    vk::DependencyInfo dependencyInfo = {
+        .dependencyFlags         = {},
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers    = &barrier};
+    
+    CommandBuffer.pipelineBarrier2(dependencyInfo);
 }
