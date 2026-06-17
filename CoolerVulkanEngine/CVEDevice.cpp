@@ -15,6 +15,7 @@ CVEDevice::CVEDevice(CVEWindow& inWindow)
     CreateSurface();
     PickPhysicalDevice();
     CreateLogicalDevice();
+    CreateCommandPool();
 }
 
 CVEDevice::~CVEDevice()
