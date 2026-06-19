@@ -35,6 +35,8 @@ private:
                                vk::PipelineStageFlags2 src_stage_mask,
                                vk::PipelineStageFlags2 dst_stage_mask);
     
+    void CreateSyncObjects();
+    
     CVEWindow Window{CVEDefaultWindowParams::DEFAULT_WINDOW_WIDTH, CVEDefaultWindowParams::DEFAULT_WINDOW_HEIGHT, CVEDefaultWindowParams::DEFAULT_WINDOW_TITLE};
     CVEDevice Device{Window};
     CVESwapChain SwapChain{Device, Window};
@@ -44,4 +46,8 @@ private:
     vk::raii::Pipeline GraphicsPipeline = nullptr;
     
     vk::raii::CommandBuffer CommandBuffer = nullptr;
+    
+    vk::raii::Semaphore PresentCompleteSemaphore = nullptr;
+    vk::raii::Semaphore RenderFinishedSemaphore = nullptr;
+    vk::raii::Fence DrawFence = nullptr;
 };

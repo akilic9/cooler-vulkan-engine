@@ -6,6 +6,7 @@ void CVEApplication::Run()
 {
     CreateGraphicsPipeline();
     CreateCommandBuffer();
+    CreateSyncObjects();
     Update();
 }
 
@@ -201,9 +202,12 @@ void CVEApplication::RecordCommandBuffer(const uint32_t imageIndex)
     
     CommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *GraphicsPipeline);
     
-    CommandBuffer.setViewport(0, 
-                   vk::Viewport(0.0f, 0.0f, static_cast<float>(SwapChainExtent.width),
-                                           static_cast<float>(SwapChainExtent.height), 0.0f, 1.0f));
+    const float extentWidth = static_cast<float>(SwapChainExtent.width);
+    const float extentHeight = static_cast<float>(SwapChainExtent.height);
+
+    const vk::Viewport viewport = vk::Viewport(0.0f, 0.0f, extentWidth, extentHeight, 0.0f, 1.0f);
+    
+    CommandBuffer.setViewport(0, viewport);
     
     CommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), SwapChainExtent));
     
@@ -251,4 +255,9 @@ void CVEApplication::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout 
         .pImageMemoryBarriers    = &barrier};
     
     CommandBuffer.pipelineBarrier2(dependencyInfo);
+}
+
+void CVEApplication::CreateSyncObjects()
+{
+    
 }
