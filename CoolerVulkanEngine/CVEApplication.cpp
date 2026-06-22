@@ -5,9 +5,10 @@
 void CVEApplication::Run()
 {
     CreateGraphicsPipeline();
-    CreateCommandBuffer();
+    CommandBuffer = Device.CreateCommandBuffer();
     CreateSyncObjects();
     Update();
+    TerminateWindow();
 }
 
 void CVEApplication::Update()
@@ -17,11 +18,38 @@ void CVEApplication::Update()
         glfwPollEvents();
         DrawFrame();
     }
+    Device.CleanUp();
 }
 
 void CVEApplication::DrawFrame()
 {
+    Device.WaitForFences(DrawFence);
     
+    vk::ResultValue<uint32_t> acquired = SwapChain.AcquireNextImage(PresentCompleteSemaphore);
+    
+    RecordCommandBuffer(acquired.value);
+    
+    vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    
+    const vk::SubmitInfo submitInfo {
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &*PresentCompleteSemaphore,
+        .pWaitDstStageMask    = &waitDestinationStageMask,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &*CommandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &*RenderFinishedSemaphore};
+    
+    Device.SubmitToQueue(DrawFence, submitInfo);
+    
+    const vk::PresentInfoKHR presentInfoKHR {
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &*RenderFinishedSemaphore,
+        .swapchainCount     = 1,
+        .pSwapchains        = &*SwapChain.GetSwapChain(),
+        .pImageIndices      = &acquired.value};
+    
+    Device.PresentKHR(presentInfoKHR);
 }
 
 void CVEApplication::TerminateWindow()
@@ -155,16 +183,6 @@ vk::raii::ShaderModule CVEApplication::CreateShaderModule(const std::vector<char
     return shaderModule;
 }
 
-void CVEApplication::CreateCommandBuffer()
-{
-    vk::CommandBufferAllocateInfo allocateInfo { 
-        .commandPool = Device.GetCommandPool(),
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1};
-
-    CommandBuffer = std::move(vk::raii::CommandBuffers(Device.GetLogicalDevice(), allocateInfo).front());
-}
-
 void CVEApplication::RecordCommandBuffer(const uint32_t imageIndex)
 {
     CommandBuffer.begin({});
@@ -230,7 +248,7 @@ void CVEApplication::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout 
                                            vk::AccessFlags2 src_access_mask, vk::AccessFlags2 dst_access_mask,
                                            vk::PipelineStageFlags2 src_stage_mask, vk::PipelineStageFlags2 dst_stage_mask)
 {
-    const std::vector<vk::Image>& SwapChainImages = SwapChain.GetSwapChainImages();
+    const std::vector<vk::Image>& swapChainImages = SwapChain.GetSwapChainImages();
     
     vk::ImageMemoryBarrier2 barrier = {
         .srcStageMask        = src_stage_mask,
@@ -241,7 +259,7 @@ void CVEApplication::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout 
         .newLayout           = new_layout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image               = SwapChainImages[imageIndex],
+        .image               = swapChainImages[imageIndex],
         .subresourceRange    = {
             .aspectMask     = vk::ImageAspectFlagBits::eColor,
             .baseMipLevel   = 0,
@@ -259,5 +277,7 @@ void CVEApplication::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout 
 
 void CVEApplication::CreateSyncObjects()
 {
-    
+    PresentCompleteSemaphore = vk::raii::Semaphore(Device.GetLogicalDevice(), vk::SemaphoreCreateInfo());
+    RenderFinishedSemaphore = vk::raii::Semaphore(Device.GetLogicalDevice(), vk::SemaphoreCreateInfo());
+    DrawFence = vk::raii::Fence(Device.GetLogicalDevice(), {.flags = vk::FenceCreateFlagBits::eSignaled});
 }

@@ -41,9 +41,16 @@ CVESwapChainSupportDetails CVEDevice::GetSwapChainSupportDetails() const
     return details;
 }
 
-const vk::raii::CommandPool& CVEDevice::GetCommandPool() const
+void CVEDevice::WaitForFences(const vk::raii::Fence& fence)
 {
-    return CommandPool;
+    const vk::Result& fenceResult = LogicalDevice.waitForFences(*fence, vk::True, UINT64_MAX);
+    
+    if (fenceResult != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("Failed to wait for fence!");
+    }
+    
+    LogicalDevice.resetFences(*fence);
 }
 
 void CVEDevice::CreateDebugMessenger()
@@ -179,4 +186,31 @@ void CVEDevice::CreateCommandPool()
         .queueFamilyIndex = QueueFamilyIndex};
     
     CommandPool = vk::raii::CommandPool(LogicalDevice, poolCreateInfo);
+}
+
+vk::raii::CommandBuffer CVEDevice::CreateCommandBuffer()
+{
+    vk::CommandBufferAllocateInfo allocateInfo { 
+        .commandPool = CommandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1};
+
+    return std::move(vk::raii::CommandBuffers(LogicalDevice, allocateInfo).front());
+}
+
+void CVEDevice::CleanUp()
+{
+    LogicalDevice.waitIdle();
+}
+
+void CVEDevice::SubmitToQueue(const vk::raii::Fence& fence, const vk::SubmitInfo& submitInfo)
+{
+    GraphicsQueue.submit(submitInfo, *fence);
+}
+
+void CVEDevice::PresentKHR(const vk::PresentInfoKHR& presentInfo)
+{
+    vk::Result result = GraphicsQueue.presentKHR(presentInfo); 
+    
+    
 }

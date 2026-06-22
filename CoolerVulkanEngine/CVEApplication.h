@@ -25,7 +25,6 @@ private:
     void CreateGraphicsPipeline();
     [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     
-    void CreateCommandBuffer();
     void RecordCommandBuffer(const uint32_t imageIndex);
     void TransitionImageLayout(uint32_t                imageIndex,
                                vk::ImageLayout         old_layout,

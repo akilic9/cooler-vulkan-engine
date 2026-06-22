@@ -28,8 +28,17 @@ public:
     const vk::raii::Device& GetLogicalDevice() const;
     const vk::raii::SurfaceKHR& GetSurface() const;
     CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
-    const vk::raii::CommandPool& GetCommandPool() const;
+    
+    void WaitForFences(const vk::raii::Fence& fence);
+    
+    vk::raii::CommandBuffer CreateCommandBuffer();
+    
+    void CleanUp();
 
+    void SubmitToQueue(const vk::raii::Fence& fence, const vk::SubmitInfo& submitInfo);
+    
+    void PresentKHR(const vk::PresentInfoKHR& presentInfo);
+    
 private:
     void CreateDebugMessenger();
     static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, 

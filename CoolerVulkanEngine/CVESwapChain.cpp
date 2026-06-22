@@ -32,11 +32,18 @@ CVESwapChain::CVESwapChain(const CVEDevice& device, const CVEWindow& window)
     
     SwapChain = vk::raii::SwapchainKHR(Device.GetLogicalDevice(), swapChainCreateInfo);
     SwapChainImages = SwapChain.getImages();
+    
+    CreateImageViews();
 }
 
 const vk::SurfaceFormatKHR& CVESwapChain::GetSurfaceFormat() const
 {
     return SurfaceFormat;
+}
+
+const vk::raii::SwapchainKHR& CVESwapChain::GetSwapChain() const
+{
+    return SwapChain;
 }
 
 const vk::Extent2D& CVESwapChain::GetExtent() const
@@ -52,6 +59,11 @@ const std::vector<vk::Image>& CVESwapChain::GetSwapChainImages() const
 const std::vector<vk::raii::ImageView>& CVESwapChain::GetSwapChainImageViews() const
 {
     return SwapChainImageViews;
+}
+
+vk::ResultValue<uint32_t> CVESwapChain::AcquireNextImage(const vk::raii::Semaphore& presentCompleteSemaphore)
+{
+    return SwapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
 }
 
 vk::Extent2D CVESwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent)

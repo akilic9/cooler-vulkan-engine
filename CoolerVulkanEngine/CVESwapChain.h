@@ -12,10 +12,13 @@ public:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     
     CVESwapChain(const CVEDevice& device, const CVEWindow& window);
+    
     const vk::SurfaceFormatKHR& GetSurfaceFormat() const;
+    const vk::raii::SwapchainKHR& GetSwapChain() const;
     const vk::Extent2D& GetExtent() const;
     const std::vector<vk::Image>& GetSwapChainImages() const;
     const std::vector<vk::raii::ImageView>& GetSwapChainImageViews() const;
+    vk::ResultValue<uint32_t> AcquireNextImage(const vk::raii::Semaphore& presentCompleteSemaphore);
     
 private:
     vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent);
