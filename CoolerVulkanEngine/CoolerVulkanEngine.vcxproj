@@ -134,6 +134,7 @@
     <ClCompile Include="CVEApplication.cpp" />
     <ClCompile Include="CVEDevice.cpp" />
     <ClCompile Include="CVEInstanceUtil.cpp" />
+    <ClCompile Include="CVERenderer.cpp" />
     <ClCompile Include="CVESwapChain.cpp" />
     <ClCompile Include="CVEWindow.cpp" />
   </ItemGroup>
@@ -141,6 +142,7 @@
     <ClInclude Include="CVEApplication.h" />
     <ClInclude Include="CVEDevice.h" />
     <ClInclude Include="CVEInstanceUtil.h" />
+    <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />
     <ClInclude Include="CVEWindow.h" />
   </ItemGroup>

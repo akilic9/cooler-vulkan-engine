@@ -5,7 +5,7 @@
 #include "CVEDevice.h"
 #include "CVEWindow.h"
 
-CVESwapChain::CVESwapChain(const CVEDevice& device, const CVEWindow& window)
+CVESwapChain::CVESwapChain(CVEDevice& device, const CVEWindow& window)
     : Device(device)
     , Surface(Device.GetSurface())
 {
@@ -34,6 +34,11 @@ CVESwapChain::CVESwapChain(const CVEDevice& device, const CVEWindow& window)
     SwapChainImages = SwapChain.getImages();
     
     CreateImageViews();
+    CreateSyncObjects();
+}
+
+CVESwapChain::~CVESwapChain()
+{
 }
 
 const vk::SurfaceFormatKHR& CVESwapChain::GetSurfaceFormat() const
@@ -61,9 +66,59 @@ const std::vector<vk::raii::ImageView>& CVESwapChain::GetSwapChainImageViews() c
     return SwapChainImageViews;
 }
 
-vk::ResultValue<uint32_t> CVESwapChain::AcquireNextImage(const vk::raii::Semaphore& presentCompleteSemaphore)
+vk::ResultValue<uint32_t> CVESwapChain::AcquireNextImage(const uint32_t frameIndex)
 {
-    return SwapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
+    return SwapChain.acquireNextImage(UINT64_MAX, *PresentCompleteSemaphores[frameIndex], nullptr);
+}
+
+void CVESwapChain::WaitForFences(const uint32_t frameIndex)
+{
+    const vk::raii::Device& logicalDevice = Device.GetLogicalDevice();
+    
+    const vk::Result& fenceResult = logicalDevice.waitForFences(*InFlightFences[frameIndex], vk::True, UINT64_MAX);
+    
+    if (fenceResult != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("Failed to wait for fence!");
+    }
+    
+    logicalDevice.resetFences(*InFlightFences[frameIndex]);
+}
+
+void CVESwapChain::SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex)
+{
+    vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    
+    const vk::SubmitInfo submitInfo {
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &*PresentCompleteSemaphores[frameIndex],
+        .pWaitDstStageMask    = &waitDestinationStageMask,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &*commandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &*RenderFinishedSemaphores[imageIndex]};
+    
+    Device.GetGraphicsQueue().submit(submitInfo, InFlightFences[frameIndex]);
+    
+    const vk::PresentInfoKHR presentInfoKHR {
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &*RenderFinishedSemaphores[imageIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &*SwapChain,
+        .pImageIndices      = &imageIndex};
+    
+    vk::Result result = Device.GetGraphicsQueue().presentKHR(presentInfoKHR);
+    
+    switch (result)
+    {
+    case vk::Result::eSuccess:
+        break;
+    case vk::Result::eSuboptimalKHR:
+        std::cout << "vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR !\n";
+        break;
+    default:
+        break;
+    }
 }
 
 vk::Extent2D CVESwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent)
@@ -142,5 +197,23 @@ void CVESwapChain::CreateImageViews()
     {
         imageViewCreateInfo.image = image;
         SwapChainImageViews.emplace_back(Device.GetLogicalDevice(), imageViewCreateInfo);
+    }
+}
+
+void CVESwapChain::CreateSyncObjects()
+{
+    assert(PresentCompleteSemaphores.empty() && RenderFinishedSemaphores.empty() && InFlightFences.empty());
+        
+    const vk::raii::Device& logicalDevice = Device.GetLogicalDevice();
+    
+    for (size_t i = 0; i < SwapChainImages.size(); i++)
+    {
+        RenderFinishedSemaphores.emplace_back(logicalDevice, vk::SemaphoreCreateInfo());
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        PresentCompleteSemaphores.emplace_back(logicalDevice, vk::SemaphoreCreateInfo());
+        InFlightFences.emplace_back(logicalDevice, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
     }
 }

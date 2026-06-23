@@ -1,7 +1,8 @@
 #pragma once
+#include "CVEWindow.h"
 #include "CVEDevice.h"
 #include "CVESwapChain.h"
-#include "CVEWindow.h"
+#include "CVERenderer.h"
 
 namespace CVEDefaultWindowParams
 {
@@ -17,36 +18,10 @@ public:
 
 private:
     void Update();
-    void DrawFrame();
     void TerminateWindow();
-    
-    // TODO: Pipeline logic should not live here, just not clear where to fit it yet
-    static std::vector<char> ReadShaderFile(const std::string& fileName);
-    void CreateGraphicsPipeline();
-    [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
-    
-    void RecordCommandBuffer(const uint32_t imageIndex);
-    void TransitionImageLayout(uint32_t                imageIndex,
-                               vk::ImageLayout         old_layout,
-                               vk::ImageLayout         new_layout,
-                               vk::AccessFlags2        src_access_mask,
-                               vk::AccessFlags2        dst_access_mask,
-                               vk::PipelineStageFlags2 src_stage_mask,
-                               vk::PipelineStageFlags2 dst_stage_mask);
-    
-    void CreateSyncObjects();
     
     CVEWindow Window{CVEDefaultWindowParams::DEFAULT_WINDOW_WIDTH, CVEDefaultWindowParams::DEFAULT_WINDOW_HEIGHT, CVEDefaultWindowParams::DEFAULT_WINDOW_TITLE};
     CVEDevice Device{Window};
     CVESwapChain SwapChain{Device, Window};
-    
-    // TODO: Pipeline logic should not live here, just not clear where to fit it yet
-    vk::raii::PipelineLayout PipelineLayout = nullptr;
-    vk::raii::Pipeline GraphicsPipeline = nullptr;
-    
-    vk::raii::CommandBuffer CommandBuffer = nullptr;
-    
-    vk::raii::Semaphore PresentCompleteSemaphore = nullptr;
-    vk::raii::Semaphore RenderFinishedSemaphore = nullptr;
-    vk::raii::Fence DrawFence = nullptr;
+    CVERenderer Renderer{Device, SwapChain};
 };

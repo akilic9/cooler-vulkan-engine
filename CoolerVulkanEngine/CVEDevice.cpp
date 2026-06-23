@@ -27,7 +27,7 @@ const vk::raii::Device& CVEDevice::GetLogicalDevice() const
     return LogicalDevice;
 }
 
-const vk::raii::SurfaceKHR& CVEDevice::GetSurface() const
+vk::raii::SurfaceKHR& CVEDevice::GetSurface()
 {
     return Surface;
 }
@@ -35,22 +35,20 @@ const vk::raii::SurfaceKHR& CVEDevice::GetSurface() const
 CVESwapChainSupportDetails CVEDevice::GetSwapChainSupportDetails() const
 {
     CVESwapChainSupportDetails details;    
-    details.SurfaceCapabilities = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);    
-    details.AvailableFormats = PhysicalDevice.getSurfaceFormatsKHR(*Surface);
+    details.SurfaceCapabilities   = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);    
+    details.AvailableFormats      = PhysicalDevice.getSurfaceFormatsKHR(*Surface);
     details.AvailablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
     return details;
 }
 
-void CVEDevice::WaitForFences(const vk::raii::Fence& fence)
+const vk::raii::CommandPool& CVEDevice::GetCommandPool() const
 {
-    const vk::Result& fenceResult = LogicalDevice.waitForFences(*fence, vk::True, UINT64_MAX);
-    
-    if (fenceResult != vk::Result::eSuccess)
-    {
-        throw std::runtime_error("Failed to wait for fence!");
-    }
-    
-    LogicalDevice.resetFences(*fence);
+    return CommandPool;
+}
+
+vk::raii::Queue& CVEDevice::GetGraphicsQueue()
+{
+    return GraphicsQueue;
 }
 
 void CVEDevice::CreateDebugMessenger()
@@ -119,9 +117,14 @@ void CVEDevice::CreateLogicalDevice()
 {
     FindQueueFamilyIndex();
     
-    vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
+    vk::StructureChain<vk::PhysicalDeviceFeatures2,
+                       vk::PhysicalDeviceVulkan11Features, 
+                       vk::PhysicalDeviceVulkan13Features,
+                       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
         {},
-        {.dynamicRendering     = true},
+        {.shaderDrawParameters = true},
+        {.synchronization2 = true,
+            .dynamicRendering = true},
         {.extendedDynamicState = true}};
     
     const float queuePriority = 0.5f;    
@@ -162,8 +165,12 @@ bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
         });
     });
 
-    auto features = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
-    bool bSupportsRequiredFeatures = features.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
+    auto features = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+                                                               vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+    
+    bool bSupportsRequiredFeatures = features.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters &&
+                                     features.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
+                                     features.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 &&
                                      features.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
     
     return bSupportsVulkan1_3 && bSupportsGraphics && bSupportsAllRequiredExtensions && bSupportsRequiredFeatures;
@@ -188,29 +195,7 @@ void CVEDevice::CreateCommandPool()
     CommandPool = vk::raii::CommandPool(LogicalDevice, poolCreateInfo);
 }
 
-vk::raii::CommandBuffer CVEDevice::CreateCommandBuffer()
-{
-    vk::CommandBufferAllocateInfo allocateInfo { 
-        .commandPool = CommandPool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1};
-
-    return std::move(vk::raii::CommandBuffers(LogicalDevice, allocateInfo).front());
-}
-
 void CVEDevice::CleanUp()
 {
     LogicalDevice.waitIdle();
-}
-
-void CVEDevice::SubmitToQueue(const vk::raii::Fence& fence, const vk::SubmitInfo& submitInfo)
-{
-    GraphicsQueue.submit(submitInfo, *fence);
-}
-
-void CVEDevice::PresentKHR(const vk::PresentInfoKHR& presentInfo)
-{
-    vk::Result result = GraphicsQueue.presentKHR(presentInfo); 
-    
-    
 }

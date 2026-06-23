@@ -26,18 +26,12 @@ public:
     CVEDevice& operator=(CVEDevice&&) = delete;
     
     const vk::raii::Device& GetLogicalDevice() const;
-    const vk::raii::SurfaceKHR& GetSurface() const;
+    vk::raii::SurfaceKHR& GetSurface();
     CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
-    
-    void WaitForFences(const vk::raii::Fence& fence);
-    
-    vk::raii::CommandBuffer CreateCommandBuffer();
+    const vk::raii::CommandPool& GetCommandPool() const;
+    vk::raii::Queue& GetGraphicsQueue();
     
     void CleanUp();
-
-    void SubmitToQueue(const vk::raii::Fence& fence, const vk::SubmitInfo& submitInfo);
-    
-    void PresentKHR(const vk::PresentInfoKHR& presentInfo);
     
 private:
     void CreateDebugMessenger();
