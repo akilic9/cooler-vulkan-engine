@@ -194,8 +194,3 @@ void CVEDevice::CreateCommandPool()
     
     CommandPool = vk::raii::CommandPool(LogicalDevice, poolCreateInfo);
 }
-
-void CVEDevice::CleanUp()
-{
-    LogicalDevice.waitIdle();
-}

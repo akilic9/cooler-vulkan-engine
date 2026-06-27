@@ -9,13 +9,16 @@ class CVEDevice;
 class CVESwapChain
 {
 public:    
-    CVESwapChain(CVEDevice& device, const CVEWindow& window);
+    CVESwapChain(CVEDevice& device, const std::array<int, 2>& windowExtent);
     ~CVESwapChain();
     
     CVESwapChain(const CVESwapChain&) = delete;
     CVESwapChain& operator=(const CVESwapChain&) = delete;
     CVESwapChain(CVESwapChain&&) = delete;
     CVESwapChain& operator=(CVESwapChain&&) = delete;
+    
+    void RecreateSwapChain(const std::array<int, 2>& windowExtent);
+    void CleanUp();
     
     const vk::SurfaceFormatKHR& GetSurfaceFormat() const;
     const vk::raii::SwapchainKHR& GetSwapChain() const;
@@ -33,7 +36,8 @@ private:
     vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent);
     vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
     vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
-    uint32_t ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabilities);    
+    uint32_t ChooseMinImageCount(const vk::SurfaceCapabilitiesKHR& capabilities);
+    void CreateSwapChain(const std::array<int, 2>& windowExtent);
     void CreateImageViews();
     void CreateSyncObjects();
     

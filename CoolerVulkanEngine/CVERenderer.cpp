@@ -17,6 +17,12 @@ CVERenderer::~CVERenderer()
 {
 }
 
+void CVERenderer::RecreateSwapChain(const std::array<int, 2>& windowExtent)
+{
+    Device.GetLogicalDevice().waitIdle();
+    SwapChain.RecreateSwapChain(windowExtent);
+}
+
 void CVERenderer::Draw()
 {
     SwapChain.WaitForFences(CurrentFrameIndex);

@@ -18,6 +18,8 @@ public:
     CVERenderer(CVERenderer&&) = delete;
     CVERenderer& operator=(CVERenderer&&) = delete;
     
+    void RecreateSwapChain(const std::array<int, 2>& windowExtent);
+    
     void Draw();
     
 private:

@@ -31,8 +31,6 @@ public:
     const vk::raii::CommandPool& GetCommandPool() const;
     vk::raii::Queue& GetGraphicsQueue();
     
-    void CleanUp();
-    
 private:
     void CreateDebugMessenger();
     static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, 

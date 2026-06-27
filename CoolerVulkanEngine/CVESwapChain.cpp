@@ -5,14 +5,25 @@
 #include "CVEDevice.h"
 #include "CVEWindow.h"
 
-CVESwapChain::CVESwapChain(CVEDevice& device, const CVEWindow& window)
+CVESwapChain::CVESwapChain(CVEDevice& device, const std::array<int, 2>& windowExtent)
     : Device(device)
     , Surface(Device.GetSurface())
+{
+    CreateSwapChain(windowExtent);
+    CreateImageViews();
+    CreateSyncObjects();
+}
+
+CVESwapChain::~CVESwapChain()
+{
+}
+
+void CVESwapChain::CreateSwapChain(const std::array<int, 2>& windowExtent)
 {
     const CVESwapChainSupportDetails& SwapChainDetails = Device.GetSwapChainSupportDetails();
     uint32_t minImageCount = ChooseMinImageCount(SwapChainDetails.SurfaceCapabilities);
     SurfaceFormat = ChooseSurfaceFormat(SwapChainDetails.AvailableFormats);
-    Extent = ChooseExtent(SwapChainDetails.SurfaceCapabilities, window.GetWindowExtent());
+    Extent = ChooseExtent(SwapChainDetails.SurfaceCapabilities, windowExtent);
     
     vk::SwapchainCreateInfoKHR swapChainCreateInfo {
         .surface          = *Surface,
@@ -32,13 +43,13 @@ CVESwapChain::CVESwapChain(CVEDevice& device, const CVEWindow& window)
     
     SwapChain = vk::raii::SwapchainKHR(Device.GetLogicalDevice(), swapChainCreateInfo);
     SwapChainImages = SwapChain.getImages();
-    
-    CreateImageViews();
-    CreateSyncObjects();
 }
 
-CVESwapChain::~CVESwapChain()
+void CVESwapChain::RecreateSwapChain(const std::array<int, 2>& windowExtent)
 {
+    CleanUp();
+    CreateSwapChain(windowExtent);
+    CreateImageViews();
 }
 
 const vk::SurfaceFormatKHR& CVESwapChain::GetSurfaceFormat() const
@@ -216,4 +227,10 @@ void CVESwapChain::CreateSyncObjects()
         PresentCompleteSemaphores.emplace_back(logicalDevice, vk::SemaphoreCreateInfo());
         InFlightFences.emplace_back(logicalDevice, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
     }
+}
+
+void CVESwapChain::CleanUp()
+{
+    SwapChainImageViews.clear();
+    SwapChain = nullptr;
 }

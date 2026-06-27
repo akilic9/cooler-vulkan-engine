@@ -13,10 +13,11 @@ void CVEApplication::Update()
         glfwPollEvents();
         Renderer.Draw();
     }
-    Device.CleanUp();
+    Device.GetLogicalDevice().waitIdle();
 }
 
 void CVEApplication::TerminateWindow()
 {
+    SwapChain.CleanUp();
     Window.Terminate();
 }
