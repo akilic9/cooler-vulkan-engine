@@ -39,7 +39,7 @@ void CVESwapChain::CreateSwapChain(const std::array<int, 2>& windowExtent)
         .presentMode      = ChoosePresentMode(SwapChainDetails.AvailablePresentModes),
         .clipped          = true};
     
-    swapChainCreateInfo.oldSwapchain = nullptr;
+    swapChainCreateInfo.oldSwapchain = SwapChain;
     
     SwapChain = vk::raii::SwapchainKHR(Device.GetLogicalDevice(), swapChainCreateInfo);
     SwapChainImages = SwapChain.getImages();
@@ -92,11 +92,14 @@ void CVESwapChain::WaitForFences(const uint32_t frameIndex)
     {
         throw std::runtime_error("Failed to wait for fence!");
     }
-    
-    logicalDevice.resetFences(*InFlightFences[frameIndex]);
 }
 
-void CVESwapChain::SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex)
+void CVESwapChain::ResetFences(const uint32_t frameIndex)
+{
+    Device.GetLogicalDevice().resetFences(*InFlightFences[frameIndex]);
+}
+
+vk::Result CVESwapChain::SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex)
 {
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     
@@ -118,18 +121,7 @@ void CVESwapChain::SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuf
         .pSwapchains        = &*SwapChain,
         .pImageIndices      = &imageIndex};
     
-    vk::Result result = Device.GetGraphicsQueue().presentKHR(presentInfoKHR);
-    
-    switch (result)
-    {
-    case vk::Result::eSuccess:
-        break;
-    case vk::Result::eSuboptimalKHR:
-        std::cout << "vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR !\n";
-        break;
-    default:
-        break;
-    }
+    return Device.GetGraphicsQueue().presentKHR(presentInfoKHR);
 }
 
 vk::Extent2D CVESwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent)
@@ -232,5 +224,4 @@ void CVESwapChain::CreateSyncObjects()
 void CVESwapChain::CleanUp()
 {
     SwapChainImageViews.clear();
-    SwapChain = nullptr;
 }

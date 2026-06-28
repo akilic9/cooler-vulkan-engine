@@ -12,6 +12,7 @@ int main()
 	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;
+		system("PAUSE");
 		return EXIT_FAILURE;
 	}
 

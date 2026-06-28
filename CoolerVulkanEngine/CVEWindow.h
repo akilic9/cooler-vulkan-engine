@@ -14,9 +14,14 @@ public:
     bool GetShouldClose() const;
     void Terminate();
     GLFWwindow* GetGLFWWindow() const;
+    bool GetWasResized() const;
+    void ResetResizeFlag();
     
     std::array<int, 2> GetWindowExtent() const;
     
 private:
+    static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
+    
     GLFWwindow* Window = nullptr;
+    bool bFrameBufferResized = false;
 };

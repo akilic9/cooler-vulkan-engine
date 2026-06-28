@@ -1,5 +1,6 @@
 #pragma once
 
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
@@ -28,7 +29,8 @@ public:
     
     vk::ResultValue<uint32_t> AcquireNextImage(const uint32_t frameIndex);    
     void WaitForFences(const uint32_t frameIndex);
-    void SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);    
+    void ResetFences(const uint32_t frameIndex);
+    vk::Result SubmitCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);    
     
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     

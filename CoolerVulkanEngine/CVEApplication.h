@@ -23,5 +23,5 @@ private:
     CVEWindow Window{CVEDefaultWindowParams::DEFAULT_WINDOW_WIDTH, CVEDefaultWindowParams::DEFAULT_WINDOW_HEIGHT, CVEDefaultWindowParams::DEFAULT_WINDOW_TITLE};
     CVEDevice Device{Window};
     CVESwapChain SwapChain{Device, Window.GetWindowExtent()};
-    CVERenderer Renderer{Device, SwapChain};
+    CVERenderer Renderer{Device, SwapChain, Window};
 };

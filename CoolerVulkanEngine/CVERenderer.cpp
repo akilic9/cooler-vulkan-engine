@@ -3,11 +3,13 @@
 #include <fstream>
 #include "CVEDevice.h"
 #include "CVESwapChain.h"
+#include "CVEWindow.h"
 
 
-CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain)
+CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWindow& inWindow)
     : Device(inDevice)
     , SwapChain(inSwapChain)
+    , Window(inWindow)
 {
     CreateGraphicsPipeline();
     CreateCommandBuffers();
@@ -17,10 +19,18 @@ CVERenderer::~CVERenderer()
 {
 }
 
-void CVERenderer::RecreateSwapChain(const std::array<int, 2>& windowExtent)
+void CVERenderer::RecreateSwapChain()
 {
+    std::array<int, 2> windowExtent = Window.GetWindowExtent();
+    while (windowExtent[0] == 0 || windowExtent[1] == 0)
+    {
+        // pause when minimized
+        windowExtent = Window.GetWindowExtent();
+        glfwWaitEvents();
+    }
+    
     Device.GetLogicalDevice().waitIdle();
-    SwapChain.RecreateSwapChain(windowExtent);
+    SwapChain.RecreateSwapChain(Window.GetWindowExtent());
 }
 
 void CVERenderer::Draw()
@@ -28,12 +38,37 @@ void CVERenderer::Draw()
     SwapChain.WaitForFences(CurrentFrameIndex);
     
     vk::ResultValue<uint32_t> acquired = SwapChain.AcquireNextImage(CurrentFrameIndex);
+    
+    if (acquired.result == vk::Result::eErrorOutOfDateKHR)
+    {
+        RecreateSwapChain();
+        return;
+    }
+    
+    if (acquired.result != vk::Result::eSuccess && acquired.result != vk::Result::eSuboptimalKHR)
+    {
+        assert(acquired.result == vk::Result::eTimeout || acquired.result == vk::Result::eNotReady);
+        throw std::runtime_error("Failed to acquire swap chain image!");
+    }
+    
+    SwapChain.ResetFences(CurrentFrameIndex);
     uint32_t imageIndex = acquired.value;
     
     CommandBuffers[CurrentFrameIndex].reset();
     RecordCommandBuffer(imageIndex);
+
+    const vk::Result& result = SwapChain.SubmitCommandBuffer(CommandBuffers[CurrentFrameIndex], CurrentFrameIndex, imageIndex);
     
-    SwapChain.SubmitCommandBuffer(CommandBuffers[CurrentFrameIndex], CurrentFrameIndex, imageIndex);
+    if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR || Window.GetWasResized())
+    {
+        Window.ResetResizeFlag();
+        RecreateSwapChain();
+    }
+    else
+    {
+        assert(result == vk::Result::eSuccess);
+    }
+    
     CurrentFrameIndex = (CurrentFrameIndex + 1) % CVESwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -110,9 +145,10 @@ void CVERenderer::CreateGraphicsPipeline()
         .depthBiasEnable         = vk::False,
         .lineWidth               = 1.0f};
     
-    vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
+    vk::PipelineMultisampleStateCreateInfo multisampling {
+        .rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
     
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment {
         .blendEnable         = vk::True,
         .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
         .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
@@ -120,7 +156,8 @@ void CVERenderer::CreateGraphicsPipeline()
         .srcAlphaBlendFactor = vk::BlendFactor::eOne,
         .dstAlphaBlendFactor = vk::BlendFactor::eZero,
         .alphaBlendOp        = vk::BlendOp::eAdd,
-        .colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+        .colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                               vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
     
     vk::PipelineColorBlendStateCreateInfo colorBlending {
         .logicOpEnable   = vk::False,

@@ -1,16 +1,18 @@
 #pragma once
 #include <string>
 #include <vector>
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+class CVEWindow;
 class CVESwapChain;
 class CVEDevice;
 
 class CVERenderer
 {
 public:
-    CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain);
+    CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWindow& inWindow);
     ~CVERenderer();
     
     CVERenderer(const CVERenderer&) = delete;
@@ -18,7 +20,7 @@ public:
     CVERenderer(CVERenderer&&) = delete;
     CVERenderer& operator=(CVERenderer&&) = delete;
     
-    void RecreateSwapChain(const std::array<int, 2>& windowExtent);
+    void RecreateSwapChain();
     
     void Draw();
     
@@ -39,6 +41,7 @@ private:
     
     CVEDevice& Device;
     CVESwapChain& SwapChain;
+    CVEWindow& Window;
     
     vk::raii::PipelineLayout PipelineLayout = nullptr;
     vk::raii::Pipeline GraphicsPipeline = nullptr;
