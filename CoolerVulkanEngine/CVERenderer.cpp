@@ -13,6 +13,7 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
 {
     CreateGraphicsPipeline();
     CreateCommandBuffers();
+    CreateVertexBuffer();
 }
 
 CVERenderer::~CVERenderer()
@@ -108,16 +109,16 @@ void CVERenderer::CreateGraphicsPipeline()
         .module = fragmentShaderModule, 
         .pName  = "main"};
     
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    vk::PipelineShaderStageCreateInfo shaderStages[] {vertShaderStageInfo, fragShaderStageInfo};
     
-    const std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    const std::vector<vk::DynamicState> dynamicStates {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
     vk::PipelineDynamicStateCreateInfo dynamicState {
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
         .pDynamicStates    = dynamicStates.data()};
 
-    vk::VertexInputBindingDescription bindingDescription = CVEVertex::GetBindingDesc();
-    std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = CVEVertex::GetAttributeDesc();
+    const vk::VertexInputBindingDescription& bindingDescription = CVEVertex::GetBindingDesc();
+    const std::array<vk::VertexInputAttributeDescription, 4>& attributeDescriptions = CVEVertex::GetAttributeDesc();
     
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{.vertexBindingDescriptionCount   = 1,
                                                            .pVertexBindingDescriptions      = &bindingDescription,
@@ -175,7 +176,7 @@ void CVERenderer::CreateGraphicsPipeline()
 
     PipelineLayout = vk::raii::PipelineLayout(Device.GetLogicalDevice(), pipelineLayoutInfo);
     
-    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain {
         {.stageCount              = 2,
             .pStages                 = shaderStages,
             .pVertexInputState       = &vertexInputInfo,
@@ -203,6 +204,31 @@ vk::raii::ShaderModule CVERenderer::CreateShaderModule(const std::vector<char>& 
     vk::raii::ShaderModule shaderModule{Device.GetLogicalDevice(), createInfo};
     
     return shaderModule;
+}
+
+void CVERenderer::CreateVertexBuffer()
+{
+    vk::BufferCreateInfo bufferCreateInfo {
+        .size        = sizeof(Vertices[0]) * (Vertices.size()),
+        .usage       = vk::BufferUsageFlagBits::eVertexBuffer,
+        .sharingMode = vk::SharingMode::eExclusive};
+    
+    VertexBuffer = vk::raii::Buffer(Device.GetLogicalDevice(), bufferCreateInfo);
+    
+    vk::MemoryRequirements memoryRequirements = VertexBuffer.getMemoryRequirements();
+    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+    
+    vk::MemoryAllocateInfo memoryAllocateInfo {
+        .allocationSize  = memoryRequirements.size,
+        .memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags)};
+    
+    VertexBufferMemory = vk::raii::DeviceMemory(Device.GetLogicalDevice(), memoryAllocateInfo);
+    
+    VertexBuffer.bindMemory(*VertexBufferMemory, 0);
+    
+    void* data = VertexBufferMemory.mapMemory(0, bufferCreateInfo.size);
+    memcpy(data, Vertices.data(), bufferCreateInfo.size);
+    VertexBufferMemory.unmapMemory();
 }
 
 void CVERenderer::CreateCommandBuffers()
@@ -235,15 +261,15 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
 
     const vk::Extent2D& SwapChainExtent = SwapChain.GetExtent();
     
-    vk::RenderingAttachmentInfo attachmentInfo = {
+    vk::RenderingAttachmentInfo attachmentInfo {
         .imageView   = SwapChainImageViews[imageIndex],
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp      = vk::AttachmentLoadOp::eClear,
         .storeOp     = vk::AttachmentStoreOp::eStore,
         .clearValue  = clearColor};
     
-    vk::RenderingInfo renderingInfo = {
-        .renderArea           = {
+    vk::RenderingInfo renderingInfo {
+        .renderArea{
             .offset = {0, 0},
             .extent = SwapChainExtent},
         .layerCount           = 1,
@@ -253,6 +279,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     CurrentCommandBuffer.beginRendering(renderingInfo);
     
     CurrentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *GraphicsPipeline);
+    CurrentCommandBuffer.bindVertexBuffers(0, *VertexBuffer, {0});
     
     const float extentWidth = static_cast<float>(SwapChainExtent.width);
     const float extentHeight = static_cast<float>(SwapChainExtent.height);
@@ -263,7 +290,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     
     CurrentCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), SwapChainExtent));
     
-    CurrentCommandBuffer.draw(3, 1, 0, 0);
+    CurrentCommandBuffer.draw(static_cast<uint32_t>(Vertices.size()), 1, 0, 0);
     
     CurrentCommandBuffer.endRendering();
     

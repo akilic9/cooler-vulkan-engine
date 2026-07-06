@@ -31,6 +31,7 @@ public:
     CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
     const vk::raii::CommandPool& GetCommandPool() const;
     vk::raii::Queue& GetGraphicsQueue();
+    uint32_t FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     
 private:
     void CreateDebugMessenger();
