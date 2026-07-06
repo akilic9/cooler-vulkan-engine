@@ -4,10 +4,30 @@
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
+#include <glm.hpp>
 
 class CVEWindow;
 class CVESwapChain;
 class CVEDevice;
+
+struct CVEVertex
+{
+    glm::vec3 Position;
+    glm::vec3 Color;
+    glm::vec3 Normal;
+    glm::vec2 TexCoord0;
+    
+    static vk::VertexInputBindingDescription GetBindingDesc()
+    {
+        return {.binding = 0, .stride = sizeof(CVEVertex), .inputRate = vk::VertexInputRate::eVertex};
+    }
+    
+    static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDesc()
+    {
+        return {{{.location = 0, .binding = 0, .format = vk::Format::eR32G32Sfloat, .offset = offsetof(CVEVertex, Position)},
+                       {.location = 1, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = offsetof(CVEVertex, Color)}}}; 
+    }
+};
 
 class CVERenderer
 {

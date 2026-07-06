@@ -115,8 +115,14 @@ void CVERenderer::CreateGraphicsPipeline()
     vk::PipelineDynamicStateCreateInfo dynamicState {
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
         .pDynamicStates    = dynamicStates.data()};
+
+    vk::VertexInputBindingDescription bindingDescription = CVEVertex::GetBindingDesc();
+    std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = CVEVertex::GetAttributeDesc();
     
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{.vertexBindingDescriptionCount   = 1,
+                                                           .pVertexBindingDescriptions      = &bindingDescription,
+                                                           .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+                                                           .pVertexAttributeDescriptions    = attributeDescriptions.data()};
     
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly {.topology = vk::PrimitiveTopology::eTriangleList};
     
