@@ -68,7 +68,9 @@ private:
     void CreateGraphicsPipeline();
     [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags);
     void CreateVertexBuffer();
+    void CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size);
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
     void TransitionImageLayout(uint32_t                imageIndex,

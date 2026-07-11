@@ -206,29 +206,66 @@ vk::raii::ShaderModule CVERenderer::CreateShaderModule(const std::vector<char>& 
     return shaderModule;
 }
 
-void CVERenderer::CreateVertexBuffer()
+std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CVERenderer::CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags)
 {
     vk::BufferCreateInfo bufferCreateInfo {
-        .size        = sizeof(Vertices[0]) * (Vertices.size()),
-        .usage       = vk::BufferUsageFlagBits::eVertexBuffer,
+        .size        = size,
+        .usage       = usageFlags,
         .sharingMode = vk::SharingMode::eExclusive};
     
-    VertexBuffer = vk::raii::Buffer(Device.GetLogicalDevice(), bufferCreateInfo);
+    vk::raii::Buffer buffer = vk::raii::Buffer(Device.GetLogicalDevice(), bufferCreateInfo);
     
-    vk::MemoryRequirements memoryRequirements = VertexBuffer.getMemoryRequirements();
-    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+    vk::MemoryRequirements memoryRequirements = buffer.getMemoryRequirements();
     
     vk::MemoryAllocateInfo memoryAllocateInfo {
         .allocationSize  = memoryRequirements.size,
         .memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags)};
     
-    VertexBufferMemory = vk::raii::DeviceMemory(Device.GetLogicalDevice(), memoryAllocateInfo);
+    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(Device.GetLogicalDevice(), memoryAllocateInfo);
     
-    VertexBuffer.bindMemory(*VertexBufferMemory, 0);
+    buffer.bindMemory(*bufferMemory, 0);
     
-    void* data = VertexBufferMemory.mapMemory(0, bufferCreateInfo.size);
-    memcpy(data, Vertices.data(), bufferCreateInfo.size);
-    VertexBufferMemory.unmapMemory();
+    return {std::move(buffer), std::move(bufferMemory)};
+}
+
+void CVERenderer::CreateVertexBuffer()
+{
+    vk::DeviceSize bufferSize = sizeof(Vertices[0]) * Vertices.size();
+    
+    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+    
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> stagingBufferAndMemory =
+        CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
+    
+    void* data = stagingBufferAndMemory.second.mapMemory(0, bufferSize);
+    memcpy(data, Vertices.data(), bufferSize);
+    stagingBufferAndMemory.second.unmapMemory();
+    
+    vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    std::tie(VertexBuffer, VertexBufferMemory) =
+        CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+    CopyBuffer(stagingBufferAndMemory.first, VertexBuffer, bufferSize);
+}
+
+void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size)
+{
+    // Maybe problems: https://docs.vulkan.org/tutorial/latest/04_Vertex_buffers/02_Staging_buffer.html#_conclusion
+    
+    vk::CommandBufferAllocateInfo allocInfo {
+        .commandPool = Device.GetCommandPool(),
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1};
+    
+    vk::raii::CommandBuffer commandCopyBuffer = std::move(Device.GetLogicalDevice().allocateCommandBuffers(allocInfo).front());
+    
+    commandCopyBuffer.begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    commandCopyBuffer.copyBuffer(*source, *destination, vk::BufferCopy(0, 0, size));
+    commandCopyBuffer.end();
+
+    const vk::raii::Queue& graphicsQueue = Device.GetGraphicsQueue();
+    graphicsQueue.submit(vk::SubmitInfo{.commandBufferCount = 1, .pCommandBuffers = &*commandCopyBuffer}, nullptr);
+    graphicsQueue.waitIdle();
 }
 
 void CVERenderer::CreateCommandBuffers()

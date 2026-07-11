@@ -36,7 +36,7 @@ public:
 private:
     void CreateDebugMessenger();
     static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, 
-                                                      const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     
     void PickPhysicalDevice();
     void FindQueueFamilyIndex();
