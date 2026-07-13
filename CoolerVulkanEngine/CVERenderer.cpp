@@ -1,6 +1,9 @@
 #include "CVERenderer.h"
 
 #include <fstream>
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <chrono>
 #include "CVEDevice.h"
 #include "CVESwapChain.h"
 #include "CVEWindow.h"
@@ -11,10 +14,13 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
     , SwapChain(inSwapChain)
     , Window(inWindow)
 {
+    CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
-    CreateCommandBuffers();
     CreateVertexBuffer();
     CreateIndexBuffer();
+    CreateUniformBuffers();
+    CreateDescriptorPool();
+    CreateCommandBuffers();
 }
 
 CVERenderer::~CVERenderer()
@@ -58,6 +64,7 @@ void CVERenderer::Draw()
     
     CommandBuffers[CurrentFrameIndex].reset();
     RecordCommandBuffer(imageIndex);
+    UpdateUniformBuffer(CurrentFrameIndex);
 
     const vk::Result& result = SwapChain.SubmitCommandBuffer(CommandBuffers[CurrentFrameIndex], CurrentFrameIndex, imageIndex);
     
@@ -72,6 +79,26 @@ void CVERenderer::Draw()
     }
     
     CurrentFrameIndex = (CurrentFrameIndex + 1) % CVESwapChain::MAX_FRAMES_IN_FLIGHT;
+}
+
+void CVERenderer::UpdateUniformBuffer(uint32_t currentFrameIndex)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    
+    CVEUniformBufferObject ubo{};
+    ubo.Model = rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.View = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.Projection = glm::perspective(glm::radians(45.0f),
+                                static_cast<float>(SwapChain.GetExtent().width) / static_cast<float>(SwapChain.GetExtent().height),
+                                 0.1f,
+                                   10.0f);
+    
+    ubo.Projection[1][1] *= -1; // Correct Y flip
+    
+    memcpy(UniformBuffersMapped[currentFrameIndex], &ubo, sizeof(ubo));
 }
 
 std::vector<char> CVERenderer::ReadShaderFile(const std::string& fileName)
@@ -90,6 +117,19 @@ std::vector<char> CVERenderer::ReadShaderFile(const std::string& fileName)
     file.close();
 
     return fileBuffer;
+}
+
+void CVERenderer::CreateDescriptorSetLayout()
+{
+    vk::DescriptorSetLayoutBinding uboLayoutBinding {
+        .binding = 0,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex};
+    
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1, .pBindings = &uboLayoutBinding};
+    
+    DescriptorSetLayout = vk::raii::DescriptorSetLayout(Device.GetLogicalDevice(), layoutInfo);
 }
 
 void CVERenderer::CreateGraphicsPipeline()
@@ -173,7 +213,10 @@ void CVERenderer::CreateGraphicsPipeline()
         .attachmentCount = 1,
         .pAttachments    = &colorBlendAttachment};
     
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo {
+        .setLayoutCount = 1,
+        .pSetLayouts = &*DescriptorSetLayout,
+        .pushConstantRangeCount = 0};
 
     PipelineLayout = vk::raii::PipelineLayout(Device.GetLogicalDevice(), pipelineLayoutInfo);
     
@@ -265,6 +308,26 @@ void CVERenderer::CreateIndexBuffer()
         CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     CopyBuffer(stagingBufferAndMemory.first, IndexBuffer, bufferSize);
+}
+
+void CVERenderer::CreateUniformBuffers()
+{
+    for (int i = 0; i < CVESwapChain::MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vk::DeviceSize bufferSize = sizeof(CVEUniformBufferObject);
+        vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+        std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> uniformBufferAndMemory =
+            CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, propertyFlags);
+        
+        UniformBuffers.emplace_back(std::move(uniformBufferAndMemory.first));
+        UniformBuffersMemory.emplace_back(std::move(uniformBufferAndMemory.second));
+        UniformBuffersMapped.emplace_back(UniformBuffersMemory.back().mapMemory(0, bufferSize));;
+    }
+}
+
+void CVERenderer::CreateDescriptorPool()
+{
+    
 }
 
 void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size)

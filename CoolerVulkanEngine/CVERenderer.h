@@ -48,6 +48,13 @@ struct CVEVertex
     }
 };
 
+struct CVEUniformBufferObject
+{
+    glm::mat4 Model;
+    glm::mat4 View;
+    glm::mat4 Projection;
+};
+
 class CVERenderer
 {
 public:
@@ -62,15 +69,19 @@ public:
     void RecreateSwapChain();
     
     void Draw();
+    void UpdateUniformBuffer(uint32_t currentFrameIndex);
     
 private:
     static std::vector<char> ReadShaderFile(const std::string& fileName);
+    void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
     [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags);
     void CreateVertexBuffer();
     void CreateIndexBuffer();
+    void CreateUniformBuffers();
+    void CreateDescriptorPool();
     void CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size);
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
@@ -86,8 +97,14 @@ private:
     CVESwapChain& SwapChain;
     CVEWindow& Window;
     
+    vk::raii::DescriptorSetLayout DescriptorSetLayout = nullptr;
     vk::raii::PipelineLayout PipelineLayout = nullptr;
     vk::raii::Pipeline GraphicsPipeline = nullptr;
+    
+    std::vector<vk::raii::Buffer> UniformBuffers;
+    std::vector<vk::raii::DeviceMemory> UniformBuffersMemory;
+    std::vector<void *> UniformBuffersMapped;
+    
     vk::raii::Buffer VertexBuffer = nullptr;
     vk::raii::DeviceMemory VertexBufferMemory = nullptr;
     vk::raii::Buffer IndexBuffer = nullptr;
@@ -102,5 +119,5 @@ private:
     {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
     
-    const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0}; 
+    const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0};
 };
