@@ -70,6 +70,7 @@ private:
     
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags);
     void CreateVertexBuffer();
+    void CreateIndexBuffer();
     void CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size);
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
@@ -89,12 +90,17 @@ private:
     vk::raii::Pipeline GraphicsPipeline = nullptr;
     vk::raii::Buffer VertexBuffer = nullptr;
     vk::raii::DeviceMemory VertexBufferMemory = nullptr;
+    vk::raii::Buffer IndexBuffer = nullptr;
+    vk::raii::DeviceMemory IndexBufferMemory = nullptr;
     std::vector<vk::raii::CommandBuffer> CommandBuffers;
     
     uint32_t CurrentFrameIndex = 0;
     
     const std::vector<CVEVertex> Vertices {
-            {{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-            {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
+    
+    const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0}; 
 };

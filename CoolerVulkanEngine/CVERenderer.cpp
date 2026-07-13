@@ -14,6 +14,7 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
     CreateGraphicsPipeline();
     CreateCommandBuffers();
     CreateVertexBuffer();
+    CreateIndexBuffer();
 }
 
 CVERenderer::~CVERenderer()
@@ -232,8 +233,7 @@ void CVERenderer::CreateVertexBuffer()
 {
     vk::DeviceSize bufferSize = sizeof(Vertices[0]) * Vertices.size();
     
-    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-    
+    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;    
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> stagingBufferAndMemory =
         CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
     
@@ -246,6 +246,25 @@ void CVERenderer::CreateVertexBuffer()
         CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     CopyBuffer(stagingBufferAndMemory.first, VertexBuffer, bufferSize);
+}
+
+void CVERenderer::CreateIndexBuffer()
+{
+    vk::DeviceSize bufferSize = sizeof(Indices[0]) * Indices.size();
+    
+    vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> stagingBufferAndMemory =
+        CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
+
+    void *data = stagingBufferAndMemory.second.mapMemory(0, bufferSize);
+    memcpy(data, Indices.data(), bufferSize);
+    stagingBufferAndMemory.second.unmapMemory();
+
+    vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    std::tie(IndexBuffer, IndexBufferMemory) =
+        CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+    CopyBuffer(stagingBufferAndMemory.first, IndexBuffer, bufferSize);
 }
 
 void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size)
@@ -317,6 +336,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     
     CurrentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *GraphicsPipeline);
     CurrentCommandBuffer.bindVertexBuffers(0, *VertexBuffer, {0});
+    CurrentCommandBuffer.bindIndexBuffer(*IndexBuffer, 0, vk::IndexType::eUint16);
     
     const float extentWidth = static_cast<float>(SwapChainExtent.width);
     const float extentHeight = static_cast<float>(SwapChainExtent.height);
@@ -327,7 +347,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     
     CurrentCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), SwapChainExtent));
     
-    CurrentCommandBuffer.draw(static_cast<uint32_t>(Vertices.size()), 1, 0, 0);
+    CurrentCommandBuffer.drawIndexed(static_cast<uint32_t>(Indices.size()), 1, 0, 0, 0);
     
     CurrentCommandBuffer.endRendering();
     
