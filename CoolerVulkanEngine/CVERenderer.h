@@ -82,6 +82,7 @@ private:
     void CreateIndexBuffer();
     void CreateUniformBuffers();
     void CreateDescriptorPool();
+    void CreateDescriptorSets();
     void CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size);
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
@@ -97,6 +98,8 @@ private:
     CVESwapChain& SwapChain;
     CVEWindow& Window;
     
+    vk::raii::DescriptorPool DescriptorPool = nullptr;
+    std::vector<vk::raii::DescriptorSet> DescriptorSets;
     vk::raii::DescriptorSetLayout DescriptorSetLayout = nullptr;
     vk::raii::PipelineLayout PipelineLayout = nullptr;
     vk::raii::Pipeline GraphicsPipeline = nullptr;

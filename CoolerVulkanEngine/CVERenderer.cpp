@@ -20,6 +20,7 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
     CreateIndexBuffer();
     CreateUniformBuffers();
     CreateDescriptorPool();
+    CreateDescriptorSets();
     CreateCommandBuffers();
 }
 
@@ -189,7 +190,7 @@ void CVERenderer::CreateGraphicsPipeline()
         .rasterizerDiscardEnable = vk::False,
         .polygonMode             = vk::PolygonMode::eFill,
         .cullMode                = vk::CullModeFlagBits::eBack,
-        .frontFace               = vk::FrontFace::eClockwise,
+        .frontFace               = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable         = vk::False,
         .lineWidth               = 1.0f};
     
@@ -327,7 +328,47 @@ void CVERenderer::CreateUniformBuffers()
 
 void CVERenderer::CreateDescriptorPool()
 {
+    vk::DescriptorPoolSize poolSize {
+        .type = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = CVESwapChain::MAX_FRAMES_IN_FLIGHT};
     
+    vk::DescriptorPoolCreateInfo poolInfo {
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets = CVESwapChain::MAX_FRAMES_IN_FLIGHT,
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize};
+    
+    DescriptorPool = vk::raii::DescriptorPool(Device.GetLogicalDevice(), poolInfo);
+}
+
+void CVERenderer::CreateDescriptorSets()
+{
+    std::vector<vk::DescriptorSetLayout> layouts(CVESwapChain::MAX_FRAMES_IN_FLIGHT, *DescriptorSetLayout);
+    
+    vk::DescriptorSetAllocateInfo allocInfo {
+        .descriptorPool     = DescriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts        = layouts.data()};
+    
+    DescriptorSets = Device.GetLogicalDevice().allocateDescriptorSets(allocInfo);
+    
+    for (int i = 0; i < CVESwapChain::MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vk::DescriptorBufferInfo bufferInfo {
+            .buffer = UniformBuffers[i],
+            .offset = 0,
+            .range = sizeof(CVEUniformBufferObject)};
+        
+        vk::WriteDescriptorSet descriptorWrite {
+            .dstSet          = DescriptorSets[i],
+            .dstBinding      = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = vk::DescriptorType::eUniformBuffer,
+            .pBufferInfo     = &bufferInfo};
+        
+        Device.GetLogicalDevice().updateDescriptorSets(descriptorWrite, {});
+    }
 }
 
 void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size)
@@ -342,11 +383,17 @@ void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destina
     vk::raii::CommandBuffer commandCopyBuffer = std::move(Device.GetLogicalDevice().allocateCommandBuffers(allocInfo).front());
     
     commandCopyBuffer.begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    commandCopyBuffer.copyBuffer(*source, *destination, vk::BufferCopy(0, 0, size));
+    
+    vk::BufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
+    
+    commandCopyBuffer.copyBuffer(*source, *destination, bufferCopy);
     commandCopyBuffer.end();
 
     const vk::raii::Queue& graphicsQueue = Device.GetGraphicsQueue();
-    graphicsQueue.submit(vk::SubmitInfo{.commandBufferCount = 1, .pCommandBuffers = &*commandCopyBuffer}, nullptr);
+    
+    vk::SubmitInfo submitInfo {.commandBufferCount = 1, .pCommandBuffers = &*commandCopyBuffer};
+    
+    graphicsQueue.submit(submitInfo, nullptr);
     graphicsQueue.waitIdle();
 }
 
@@ -377,8 +424,6 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 
     const std::vector<vk::raii::ImageView>& SwapChainImageViews = SwapChain.GetSwapChainImageViews();
-
-    const vk::Extent2D& SwapChainExtent = SwapChain.GetExtent();
     
     vk::RenderingAttachmentInfo attachmentInfo {
         .imageView   = SwapChainImageViews[imageIndex],
@@ -386,6 +431,8 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
         .loadOp      = vk::AttachmentLoadOp::eClear,
         .storeOp     = vk::AttachmentStoreOp::eStore,
         .clearValue  = clearColor};
+    
+    const vk::Extent2D& SwapChainExtent = SwapChain.GetExtent();
     
     vk::RenderingInfo renderingInfo {
         .renderArea{
@@ -400,6 +447,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     CurrentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *GraphicsPipeline);
     CurrentCommandBuffer.bindVertexBuffers(0, *VertexBuffer, {0});
     CurrentCommandBuffer.bindIndexBuffer(*IndexBuffer, 0, vk::IndexType::eUint16);
+    CurrentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, PipelineLayout, 0, *DescriptorSets[CurrentFrameIndex], nullptr);
     
     const float extentWidth = static_cast<float>(SwapChainExtent.width);
     const float extentHeight = static_cast<float>(SwapChainExtent.height);
