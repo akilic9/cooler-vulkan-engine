@@ -66,10 +66,7 @@ public:
     CVERenderer(CVERenderer&&) = delete;
     CVERenderer& operator=(CVERenderer&&) = delete;
     
-    void RecreateSwapChain();
-    
     void Draw();
-    void UpdateUniformBuffer(uint32_t currentFrameIndex);
     
 private:
     static std::vector<char> ReadShaderFile(const std::string& fileName);
@@ -93,6 +90,10 @@ private:
                                vk::AccessFlags2        dst_access_mask,
                                vk::PipelineStageFlags2 src_stage_mask,
                                vk::PipelineStageFlags2 dst_stage_mask);
+    
+    
+    void UpdateUniformBuffer(uint32_t currentFrameIndex);
+    void RecreateSwapChain();
     
     CVEDevice& Device;
     CVESwapChain& SwapChain;
