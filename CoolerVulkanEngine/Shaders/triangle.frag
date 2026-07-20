@@ -1,10 +1,9 @@
-#version 460
-
-layout(location = 0) in vec3 fragColour;
-
-layout(location = 0) out vec4 outColour;
-
-void main()
+struct PSInput
 {
-    outColour = vec4(fragColour, 1.0);
+    float3 colour : COLOR0;
+};
+
+float4 main(PSInput input) : SV_Target
+{
+     return float4(input.colour, 1.0);
 }

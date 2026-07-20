@@ -1,20 +1,33 @@
-#version 460
-
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
-    mat4 projection;
-} ubo;
-
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColour;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec2 inTexCoord0;
-
-layout(location = 0) out vec3 fragColour;
-
-void main()
+struct UniformBufferObject
 {
-    gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragColour = inColour;
+    float4x4 model;
+    float4x4 view;
+    float4x4 projection;
+};
+
+cbuffer ubo : register(b0, space0)
+{
+    UniformBufferObject ubo;
+}
+
+struct VSInput
+{
+    [[vk::location(0)]] float3 position : POSITION0;
+    [[vk::location(1)]] float3 colour : COLOR0;
+    [[vk::location(2)]] float3 normal : NORMAL0;
+    [[vk::location(3)]] float3 texCoord0 : TEXCOORD0;
+};
+
+struct VSOutput
+{
+    float4 position : SV_POSITION;
+    [[vk::location(0)]] float3 colour : COLOR0;
+};
+
+VSOutput main(VSInput input)
+{
+    VSOutput output;
+    output.colour = input.colour;
+    output.position = mul(ubo.projection, mul(ubo.view, mul(ubo.model, float4(input.position, 1.0))));
+    return output;
 }
