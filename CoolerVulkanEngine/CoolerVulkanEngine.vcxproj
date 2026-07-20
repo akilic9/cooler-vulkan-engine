@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -122,11 +122,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glm-1.0.3;$(SolutionDir)Libraries\glfw-3.4;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -136,6 +139,7 @@
     <ClCompile Include="CVEInstanceUtil.cpp" />
     <ClCompile Include="CVERenderer.cpp" />
     <ClCompile Include="CVESwapChain.cpp" />
+    <ClCompile Include="CVETexture.cpp" />
     <ClCompile Include="CVEWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +148,7 @@
     <ClInclude Include="CVEInstanceUtil.h" />
     <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />
+    <ClInclude Include="CVETexture.h" />
     <ClInclude Include="CVEWindow.h" />
   </ItemGroup>
   <ItemGroup>

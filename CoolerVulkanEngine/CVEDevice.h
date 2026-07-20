@@ -33,10 +33,21 @@ public:
     vk::raii::Queue& GetGraphicsQueue();
     uint32_t FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size,
+                                                                     vk::BufferUsageFlags usageFlags,
+                                                                     vk::MemoryPropertyFlags propertyFlags);
+    
+    vk::raii::CommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommands(const vk::raii::CommandBuffer& commandBuffer);
+    void CopyBuffer(const vk::raii::Buffer& source, const vk::raii::Buffer& destination, vk::DeviceSize size);
+    void CopyBufferToImage(const vk::raii::CommandBuffer &commandBuffer, const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
+    
 private:
     void CreateDebugMessenger();
-    static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, 
-                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+    static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                          vk::DebugUtilsMessageTypeFlagsEXT type, 
+                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                          void* pUserData);
     
     void PickPhysicalDevice();
     void FindQueueFamilyIndex();

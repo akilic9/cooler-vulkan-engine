@@ -66,6 +66,80 @@ uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags 
     throw std::runtime_error("Failed to find suitable memory type!");
 }
 
+std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CVEDevice::CreateBuffer(vk::DeviceSize size,
+                                                                            vk::BufferUsageFlags usageFlags,
+                                                                            vk::MemoryPropertyFlags propertyFlags)
+{
+    vk::BufferCreateInfo bufferCreateInfo {
+        .size        = size,
+        .usage       = usageFlags,
+        .sharingMode = vk::SharingMode::eExclusive};
+
+    vk::raii::Buffer buffer = vk::raii::Buffer(LogicalDevice, bufferCreateInfo);
+
+    vk::MemoryRequirements memoryRequirements = buffer.getMemoryRequirements();
+
+    vk::MemoryAllocateInfo memoryAllocateInfo {
+        .allocationSize  = memoryRequirements.size,
+        .memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags)};
+
+    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(LogicalDevice, memoryAllocateInfo);
+
+    buffer.bindMemory(*bufferMemory, 0);
+
+    return {std::move(buffer), std::move(bufferMemory)};
+}
+
+vk::raii::CommandBuffer CVEDevice::BeginSingleTimeCommands()
+{
+    vk::CommandBufferAllocateInfo allocInfo {
+        .commandPool        = CommandPool,
+        .level              = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1};
+
+    vk::raii::CommandBuffer commandBuffer = std::move(LogicalDevice.allocateCommandBuffers(allocInfo).front());
+    vk::CommandBufferBeginInfo beginInfo{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+    commandBuffer.begin(beginInfo);
+
+    return commandBuffer; // why does the original has std::move here?
+}
+
+void CVEDevice::EndSingleTimeCommands(const vk::raii::CommandBuffer& commandBuffer)
+{
+    commandBuffer.end();
+    
+    vk::SubmitInfo submitInfo {.commandBufferCount = 1, .pCommandBuffers = &*commandBuffer};
+    
+    GraphicsQueue.submit(submitInfo, nullptr);
+    GraphicsQueue.waitIdle();
+}
+
+void CVEDevice::CopyBuffer(const vk::raii::Buffer& source, const vk::raii::Buffer& destination, vk::DeviceSize size)
+{
+    const vk::raii::CommandBuffer& commandCopyBuffer = BeginSingleTimeCommands();
+    vk::BufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
+    commandCopyBuffer.copyBuffer(*source, *destination, bufferCopy);
+    EndSingleTimeCommands(commandCopyBuffer);
+}
+
+void CVEDevice::CopyBufferToImage(const vk::raii::CommandBuffer& commandBuffer, const vk::raii::Buffer& buffer,
+                                  vk::raii::Image& image, uint32_t width, uint32_t height)
+{
+    vk::BufferImageCopy region {
+        .bufferOffset      = 0,
+        .bufferRowLength   = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource {
+            .aspectMask     = vk::ImageAspectFlagBits::eColor,
+            .mipLevel       = 0,
+            .baseArrayLayer = 0,
+            .layerCount     = 1},
+        .imageOffset       = {0, 0, 0},
+        .imageExtent       = {width, height, 1}};
+    
+    commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
+}
+
 void CVEDevice::CreateDebugMessenger()
 {
     if (!CVEInstanceUtil::bValidationLayersEnabled)
@@ -166,7 +240,7 @@ bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
     const std::vector<vk::QueueFamilyProperties>& queueFamilies = physicalDevice.getQueueFamilyProperties();
     const bool bSupportsGraphics = std::ranges::any_of(queueFamilies, [](const vk::QueueFamilyProperties& queueFamilyProperty)
     {
-        return !!(queueFamilyProperty.queueFlags & vk::QueueFlagBits::eGraphics); // ??
+        return !!(queueFamilyProperty.queueFlags & vk::QueueFlagBits::eGraphics);
     });
 
     const std::vector<vk::ExtensionProperties>& availableDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();

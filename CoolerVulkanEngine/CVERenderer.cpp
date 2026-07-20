@@ -251,35 +251,13 @@ vk::raii::ShaderModule CVERenderer::CreateShaderModule(const std::vector<char>& 
     return shaderModule;
 }
 
-std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CVERenderer::CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags)
-{
-    vk::BufferCreateInfo bufferCreateInfo {
-        .size        = size,
-        .usage       = usageFlags,
-        .sharingMode = vk::SharingMode::eExclusive};
-    
-    vk::raii::Buffer buffer = vk::raii::Buffer(Device.GetLogicalDevice(), bufferCreateInfo);
-    
-    vk::MemoryRequirements memoryRequirements = buffer.getMemoryRequirements();
-    
-    vk::MemoryAllocateInfo memoryAllocateInfo {
-        .allocationSize  = memoryRequirements.size,
-        .memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags)};
-    
-    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(Device.GetLogicalDevice(), memoryAllocateInfo);
-    
-    buffer.bindMemory(*bufferMemory, 0);
-    
-    return {std::move(buffer), std::move(bufferMemory)};
-}
-
 void CVERenderer::CreateVertexBuffer()
 {
     vk::DeviceSize bufferSize = sizeof(Vertices[0]) * Vertices.size();
     
     vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;    
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> stagingBufferAndMemory =
-        CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
+        Device.CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
     
     void* data = stagingBufferAndMemory.second.mapMemory(0, bufferSize);
     memcpy(data, Vertices.data(), bufferSize);
@@ -287,9 +265,9 @@ void CVERenderer::CreateVertexBuffer()
     
     vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
     std::tie(VertexBuffer, VertexBufferMemory) =
-        CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        Device.CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    CopyBuffer(stagingBufferAndMemory.first, VertexBuffer, bufferSize);
+    Device.CopyBuffer(stagingBufferAndMemory.first, VertexBuffer, bufferSize);
 }
 
 void CVERenderer::CreateIndexBuffer()
@@ -298,7 +276,7 @@ void CVERenderer::CreateIndexBuffer()
     
     vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> stagingBufferAndMemory =
-        CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
+        Device.CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, propertyFlags);
 
     void *data = stagingBufferAndMemory.second.mapMemory(0, bufferSize);
     memcpy(data, Indices.data(), bufferSize);
@@ -306,9 +284,9 @@ void CVERenderer::CreateIndexBuffer()
 
     vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
     std::tie(IndexBuffer, IndexBufferMemory) =
-        CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        Device.CreateBuffer(bufferSize, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    CopyBuffer(stagingBufferAndMemory.first, IndexBuffer, bufferSize);
+    Device.CopyBuffer(stagingBufferAndMemory.first, IndexBuffer, bufferSize);
 }
 
 void CVERenderer::CreateUniformBuffers()
@@ -318,11 +296,11 @@ void CVERenderer::CreateUniformBuffers()
         vk::DeviceSize bufferSize = sizeof(CVEUniformBufferObject);
         vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
         std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> uniformBufferAndMemory =
-            CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, propertyFlags);
+            Device.CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, propertyFlags);
         
         UniformBuffers.emplace_back(std::move(uniformBufferAndMemory.first));
         UniformBuffersMemory.emplace_back(std::move(uniformBufferAndMemory.second));
-        UniformBuffersMapped.emplace_back(UniformBuffersMemory.back().mapMemory(0, bufferSize));;
+        UniformBuffersMapped.emplace_back(UniformBuffersMemory.back().mapMemory(0, bufferSize));
     }
 }
 
@@ -369,32 +347,6 @@ void CVERenderer::CreateDescriptorSets()
         
         Device.GetLogicalDevice().updateDescriptorSets(descriptorWrite, {});
     }
-}
-
-void CVERenderer::CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size)
-{
-    // Maybe problems: https://docs.vulkan.org/tutorial/latest/04_Vertex_buffers/02_Staging_buffer.html#_conclusion
-    
-    vk::CommandBufferAllocateInfo allocInfo {
-        .commandPool = Device.GetCommandPool(),
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1};
-    
-    vk::raii::CommandBuffer commandCopyBuffer = std::move(Device.GetLogicalDevice().allocateCommandBuffers(allocInfo).front());
-    
-    commandCopyBuffer.begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    
-    vk::BufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
-    
-    commandCopyBuffer.copyBuffer(*source, *destination, bufferCopy);
-    commandCopyBuffer.end();
-
-    const vk::raii::Queue& graphicsQueue = Device.GetGraphicsQueue();
-    
-    vk::SubmitInfo submitInfo {.commandBufferCount = 1, .pCommandBuffers = &*commandCopyBuffer};
-    
-    graphicsQueue.submit(submitInfo, nullptr);
-    graphicsQueue.waitIdle();
 }
 
 void CVERenderer::CreateCommandBuffers()
@@ -473,21 +425,21 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     CurrentCommandBuffer.end();
 }
 
-void CVERenderer::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout old_layout, vk::ImageLayout new_layout,
-                                        vk::AccessFlags2 src_access_mask, vk::AccessFlags2 dst_access_mask,
-                                        vk::PipelineStageFlags2 src_stage_mask, vk::PipelineStageFlags2 dst_stage_mask)
+void CVERenderer::TransitionImageLayout(uint32_t imageIndex, vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
+                                        vk::AccessFlags2 srcAccessMask, vk::AccessFlags2 dstAccessMask,
+                                        vk::PipelineStageFlags2 srcStageMask, vk::PipelineStageFlags2 dstStageMask)
 {
     const std::vector<vk::Image>& swapChainImages = SwapChain.GetSwapChainImages();
     
     vk::ImageMemoryBarrier2 barrier = {
-        .srcStageMask        = src_stage_mask,
-        .srcAccessMask       = src_access_mask,
-        .dstStageMask        = dst_stage_mask,
-        .dstAccessMask       = dst_access_mask,
-        .oldLayout           = old_layout,
-        .newLayout           = new_layout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .srcStageMask        = srcStageMask,
+        .srcAccessMask       = srcAccessMask,
+        .dstStageMask        = dstStageMask,
+        .dstAccessMask       = dstAccessMask,
+        .oldLayout           = oldLayout,
+        .newLayout           = newLayout,
+        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
         .image               = swapChainImages[imageIndex],
         .subresourceRange    = {
             .aspectMask     = vk::ImageAspectFlagBits::eColor,

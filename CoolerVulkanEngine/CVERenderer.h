@@ -72,24 +72,22 @@ private:
     static std::vector<char> ReadShaderFile(const std::string& fileName);
     void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
-    [[nodiscard]] vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
+    vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
     
-    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags propertyFlags);
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffers();
     void CreateDescriptorPool();
     void CreateDescriptorSets();
-    void CopyBuffer(vk::raii::Buffer& source, vk::raii::Buffer& destination, vk::DeviceSize size);
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
     void TransitionImageLayout(uint32_t                imageIndex,
-                               vk::ImageLayout         old_layout,
-                               vk::ImageLayout         new_layout,
-                               vk::AccessFlags2        src_access_mask,
-                               vk::AccessFlags2        dst_access_mask,
-                               vk::PipelineStageFlags2 src_stage_mask,
-                               vk::PipelineStageFlags2 dst_stage_mask);
+                               vk::ImageLayout         oldLayout,
+                               vk::ImageLayout         newLayout,
+                               vk::AccessFlags2        srcAccessMask,
+                               vk::AccessFlags2        dstAccessMask,
+                               vk::PipelineStageFlags2 srcStageMask,
+                               vk::PipelineStageFlags2 dstStageMask);
     
     
     void UpdateUniformBuffer(uint32_t currentFrameIndex);
