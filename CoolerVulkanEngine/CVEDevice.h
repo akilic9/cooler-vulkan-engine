@@ -31,11 +31,11 @@ public:
     VkQueue& GetGraphicsQueue();
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
-    void CreateBuffer(VkDeviceSize size,
-                      VkBufferUsageFlags usageFlags,
+    void CreateBuffer(VkDeviceSize          size,
+                      VkBufferUsageFlags    usageFlags,
                       VkMemoryPropertyFlags propertyFlags,
-                      VkBuffer& outBuffer,
-                      VkDeviceMemory& outBufferMemory);
+                      VkBuffer&             outBuffer,
+                      VkDeviceMemory&       outBufferMemory);
     
     VkCommandBuffer BeginSingleTimeCommands();
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -45,10 +45,10 @@ public:
 private:
     void CreateVulkanInstance();
     void CreateDebugMessenger();
-    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-                                                          VkDebugUtilsMessageTypeFlagsEXT type, 
-                                                          const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                                          void* pUserData);
+    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      severity,
+                                                        VkDebugUtilsMessageTypeFlagsEXT             type, 
+                                                        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                        void*                                       pUserData);
     
     void PickPhysicalDevice();
     void FindQueueFamilyIndex();

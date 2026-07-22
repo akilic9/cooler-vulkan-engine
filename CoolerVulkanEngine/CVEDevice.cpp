@@ -189,8 +189,8 @@ void CVEDevice::CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer
     region.bufferRowLength   = 0;
     region.bufferImageHeight = 0;
     region.imageSubresource  = imageSubresource;
-    region.imageOffset    = {0, 0, 0};
-    region.imageExtent    = {width, height, 1};
+    region.imageOffset       = {0, 0, 0};
+    region.imageExtent       = {width, height, 1};
     
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }

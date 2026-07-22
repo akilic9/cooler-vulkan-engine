@@ -78,8 +78,8 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     uint32_t memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, properties);
     
     VkMemoryAllocateInfo memoryAllocateInfo{};
-    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.allocationSize = memoryRequirements.size;
+    memoryAllocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryAllocateInfo.allocationSize  = memoryRequirements.size;
     memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
     
     if (vkAllocateMemory(Device.GetLogicalDevice(), &memoryAllocateInfo, nullptr, &TextureImageMemory) != VK_SUCCESS)
@@ -133,13 +133,10 @@ void CVETexture::TransitionImageLayout(const VkCommandBuffer& commandBuffer,
     }
     
     vkCmdPipelineBarrier(commandBuffer,
-        sourceStage,
-        destinationStage,
-        0,
-        0,
-        nullptr,
-        0,
-        nullptr,
-        1,
-        &barrier);
+                         sourceStage,
+                         destinationStage,
+                         0,
+                         0, nullptr,
+                         0, nullptr,
+                         1, &barrier);
 }

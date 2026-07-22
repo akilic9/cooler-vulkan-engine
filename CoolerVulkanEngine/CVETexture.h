@@ -20,9 +20,9 @@ private:
                      VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
     
     void TransitionImageLayout(const VkCommandBuffer &commandBuffer,
-                               const VkImage &image,
-                               VkImageLayout oldLayout,
-                               VkImageLayout newLayout);
+                               const VkImage         &image,
+                               VkImageLayout         oldLayout,
+                               VkImageLayout         newLayout);
     
     CVEDevice& Device;
     VkImage TextureImage;

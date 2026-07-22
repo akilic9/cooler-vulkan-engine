@@ -150,15 +150,15 @@ std::vector<char> CVERenderer::ReadShaderFile(const std::string& fileName)
 void CVERenderer::CreateDescriptorSetLayout()
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.binding         = 0;
+    uboLayoutBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
     
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &uboLayoutBinding;
+    layoutInfo.pBindings    = &uboLayoutBinding;
     
     if (vkCreateDescriptorSetLayout(Device.GetLogicalDevice(), &layoutInfo, nullptr, &DescriptorSetLayout) != VK_SUCCESS)
     {
@@ -237,7 +237,7 @@ void CVERenderer::CreateGraphicsPipeline()
     viewportState.pScissors     = &scissor;
     
     VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType        = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable        = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
@@ -481,12 +481,12 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     }
     
     TransitionImageLayout(imageIndex,
-                 VK_IMAGE_LAYOUT_UNDEFINED,
-                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-         0,
-         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          0,
+                          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
     
     VkClearValue clearColor{};
     clearColor.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
@@ -523,11 +523,11 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     vkCmdBindDescriptorSets(CurrentCommandBuffer,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
                             PipelineLayout,
-                     0, 
-             1, 
+                            0,
+                            1, 
                             &DescriptorSets[CurrentFrameIndex], 
-            0,
-              nullptr);
+                            0,
+                            nullptr);
     
     const float extentWidth = static_cast<float>(SwapChainExtent.width);
     const float extentHeight = static_cast<float>(SwapChainExtent.height);
@@ -553,12 +553,12 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     vkCmdEndRendering(CurrentCommandBuffer);
 
     TransitionImageLayout(imageIndex,
-                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                           VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                           VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                           0,
-                           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                           VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                          0,
+                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
     
     if (vkEndCommandBuffer(CurrentCommandBuffer) != VK_SUCCESS)
     {
