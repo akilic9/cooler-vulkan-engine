@@ -55,7 +55,7 @@ void CVETexture::CreateTexture(const std::string& filePath)
 
 void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
 {
-    VkImageCreateInfo imageInfo {};
+    VkImageCreateInfo imageInfo{};
     imageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType   = VK_IMAGE_TYPE_2D;
     imageInfo.format      = format;
@@ -77,7 +77,7 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     
     uint32_t memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, properties);
     
-    VkMemoryAllocateInfo memoryAllocateInfo {};
+    VkMemoryAllocateInfo memoryAllocateInfo{};
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocateInfo.allocationSize = memoryRequirements.size;
     memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;

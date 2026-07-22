@@ -45,7 +45,7 @@ void CVESwapChain::CreateSwapChain(const std::array<int, 2>& windowExtent)
     SurfaceFormat = ChooseSurfaceFormat(SwapChainDetails.AvailableFormats);
     Extent = ChooseExtent(SwapChainDetails.SurfaceCapabilities, windowExtent);
     
-    VkSwapchainCreateInfoKHR swapChainCreateInfo {};
+    VkSwapchainCreateInfoKHR swapChainCreateInfo{};
     swapChainCreateInfo.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapChainCreateInfo.surface          = Surface;
     swapChainCreateInfo.minImageCount    = minImageCount;
@@ -112,9 +112,7 @@ VkResult CVESwapChain::AcquireNextImage(const uint32_t frameIndex, uint32_t* ima
 }
 
 void CVESwapChain::WaitForFences(const uint32_t frameIndex)
-{
-    const VkDevice& logicalDevice = Device.GetLogicalDevice();
-    
+{    
     const VkResult& fenceResult = vkWaitForFences(Device.GetLogicalDevice(), 1, &InFlightFences[frameIndex], VK_TRUE, UINT64_MAX);
     
     if (fenceResult != VK_SUCCESS)
@@ -132,7 +130,7 @@ VkResult CVESwapChain::SubmitCommandBuffer(const VkCommandBuffer& commandBuffer,
 {
     VkPipelineStageFlags waitDestinationStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     
-    VkSubmitInfo submitInfo {};
+    VkSubmitInfo submitInfo{};
     submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount   = 1;
     submitInfo.pWaitSemaphores      = &PresentCompleteSemaphores[frameIndex];
@@ -147,7 +145,7 @@ VkResult CVESwapChain::SubmitCommandBuffer(const VkCommandBuffer& commandBuffer,
         throw std::runtime_error("Failed to submit draw command buffer!");
     }
     
-    VkPresentInfoKHR presentInfoKHR {};
+    VkPresentInfoKHR presentInfoKHR{};
     presentInfoKHR.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfoKHR.waitSemaphoreCount = 1;
     presentInfoKHR.pWaitSemaphores    = &RenderFinishedSemaphores[imageIndex];
@@ -165,7 +163,7 @@ VkExtent2D CVESwapChain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabiliti
         return capabilities.currentExtent;
     }
 
-    VkExtent2D extent {};
+    VkExtent2D extent{};
     extent.width  = std::clamp<uint32_t>(windowExtent[0], capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     extent.height = std::clamp<uint32_t>(windowExtent[1], capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
     
@@ -219,7 +217,7 @@ void CVESwapChain::CreateImageViews()
     assert(SwapChainImageViews.empty());
     SwapChainImageViews.resize(SwapChainImages.size());
 
-    VkImageViewCreateInfo imageViewCreateInfo {};
+    VkImageViewCreateInfo imageViewCreateInfo{};
     imageViewCreateInfo.sType                       = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     imageViewCreateInfo.viewType                    = VK_IMAGE_VIEW_TYPE_2D;
     imageViewCreateInfo.format                      = SurfaceFormat.format;
@@ -251,25 +249,25 @@ void CVESwapChain::CreateSyncObjects()
     
     const VkDevice& logicalDevice = Device.GetLogicalDevice();
     
-    VkSemaphoreCreateInfo semaphoreInfo = {};
+    VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     
     for (size_t i = 0; i < SwapChainImages.size(); i++)
     {
-        if (vkCreateSemaphore(Device.GetLogicalDevice(), &semaphoreInfo, nullptr, &RenderFinishedSemaphores[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &RenderFinishedSemaphores[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create synchronization objects for a frame!");
         }
     }
     
-    VkFenceCreateInfo fenceInfo = {};
+    VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        if (vkCreateSemaphore(Device.GetLogicalDevice(), &semaphoreInfo, nullptr, &PresentCompleteSemaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(Device.GetLogicalDevice(), &fenceInfo, nullptr, &InFlightFences[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &PresentCompleteSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(logicalDevice, &fenceInfo, nullptr, &InFlightFences[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create synchronization objects for a frame!");
         }

@@ -157,9 +157,9 @@ void CVEDevice::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
     vkEndCommandBuffer(commandBuffer);
     
     VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.pCommandBuffers    = &commandBuffer;
     
     vkQueueSubmit(GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(GraphicsQueue);
@@ -184,7 +184,7 @@ void CVEDevice::CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer
     imageSubresource.baseArrayLayer = 0;
     imageSubresource.layerCount     = 1;
     
-    VkBufferImageCopy region {};
+    VkBufferImageCopy region{};
     region.bufferOffset      = 0;
     region.bufferRowLength   = 0;
     region.bufferImageHeight = 0;
@@ -197,7 +197,7 @@ void CVEDevice::CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer
 
 void CVEDevice::CreateVulkanInstance()
 {
-    VkApplicationInfo appInfo {};
+    VkApplicationInfo appInfo{};
     appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName   = "CoolerVulkanEngine";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -211,7 +211,7 @@ void CVEDevice::CreateVulkanInstance()
     const std::vector<const char*>& requiredExtensions = CVEInstanceUtil::GetRequiredExtensions();
     CVEInstanceUtil::CheckExtensionsSupport(requiredExtensions);
     
-    VkInstanceCreateInfo createInfo {};
+    VkInstanceCreateInfo createInfo{};
     createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo        = &appInfo;
     createInfo.enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size());
@@ -236,7 +236,7 @@ void CVEDevice::CreateDebugMessenger()
     
     VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT);
     
-    VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT {};
+    VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT{};
     debugUtilsMessengerCreateInfoEXT.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debugUtilsMessengerCreateInfoEXT.messageSeverity = severityFlags;
     debugUtilsMessengerCreateInfoEXT.messageType     = messageTypeFlags;
@@ -338,13 +338,13 @@ void CVEDevice::CreateLogicalDevice()
     featureChain.pNext = &vk11Features;
     
     const float queuePriority = 0.5f;
-    VkDeviceQueueCreateInfo deviceQueueCreateInfo {};
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
     deviceQueueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     deviceQueueCreateInfo.queueFamilyIndex = QueueFamilyIndex;
     deviceQueueCreateInfo.queueCount       = 1;
     deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
     
-    VkDeviceCreateInfo deviceCreateInfo {};
+    VkDeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.pNext                   = &featureChain;
     deviceCreateInfo.queueCreateInfoCount    = 1;
@@ -363,7 +363,9 @@ void CVEDevice::CreateLogicalDevice()
 // TODO: Split
 bool CVEDevice::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice)
 {
-    VkPhysicalDeviceProperties2 deviceProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    VkPhysicalDeviceProperties2 deviceProperties{};
+    deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    
     vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties);
     
     const bool bSupportsVulkan1_3 = deviceProperties.properties.apiVersion >= VK_API_VERSION_1_3;
@@ -429,7 +431,7 @@ void CVEDevice::CreateSurface()
 
 void CVEDevice::CreateCommandPool()
 {
-    VkCommandPoolCreateInfo poolCreateInfo {};
+    VkCommandPoolCreateInfo poolCreateInfo{};
     poolCreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolCreateInfo.pNext            = nullptr;
     poolCreateInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;

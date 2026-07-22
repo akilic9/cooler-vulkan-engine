@@ -149,7 +149,7 @@ std::vector<char> CVERenderer::ReadShaderFile(const std::string& fileName)
 
 void CVERenderer::CreateDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding uboLayoutBinding {};
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.descriptorCount = 1;
@@ -177,22 +177,28 @@ void CVERenderer::CreateGraphicsPipeline()
     CreateShaderModule(fragmentShader, &fragmentShaderModule);
     
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertexShaderModule;
-    vertShaderStageInfo.pName  = "main";
+    vertShaderStageInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage                = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module               = vertexShaderModule;
+    vertShaderStageInfo.pName                = "main";
+    vertShaderStageInfo.flags                = 0;
+    vertShaderStageInfo.pNext                = nullptr;
+    vertShaderStageInfo.pSpecializationInfo  = nullptr;
     
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragmentShaderModule;
-    fragShaderStageInfo.pName  = "main";
+    fragShaderStageInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage                = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module               = fragmentShaderModule;
+    fragShaderStageInfo.pName                = "main";
+    fragShaderStageInfo.flags                = 0;
+    fragShaderStageInfo.pNext                = nullptr;
+    fragShaderStageInfo.pSpecializationInfo  = nullptr;
     
     VkPipelineShaderStageCreateInfo shaderStages[] {vertShaderStageInfo, fragShaderStageInfo};
     
     const std::vector<VkDynamicState> dynamicStates {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 
-    VkPipelineDynamicStateCreateInfo dynamicState {};
+    VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates    = dynamicStates.data();
@@ -263,7 +269,7 @@ void CVERenderer::CreateGraphicsPipeline()
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments    = &colorBlendAttachment;
     
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo {};
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount         = 1;
     pipelineLayoutInfo.pSetLayouts            = &DescriptorSetLayout;
@@ -274,7 +280,7 @@ void CVERenderer::CreateGraphicsPipeline()
         throw std::runtime_error("Failed to create pipeline layout!");
     }
     
-    VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo {};
+    VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     pipelineRenderingCreateInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     pipelineRenderingCreateInfo.colorAttachmentCount = 1;
     
@@ -487,7 +493,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
 
     const std::vector<VkImageView>& SwapChainImageViews = SwapChain.GetSwapChainImageViews();
     
-    VkRenderingAttachmentInfo attachmentInfo {};
+    VkRenderingAttachmentInfo attachmentInfo{};
     attachmentInfo.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     attachmentInfo.pNext       = nullptr;
     attachmentInfo.imageView   = SwapChainImageViews[imageIndex];
@@ -498,7 +504,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     
     const VkExtent2D& SwapChainExtent = SwapChain.GetExtent();
     
-    VkRenderingInfo renderingInfo {};
+    VkRenderingInfo renderingInfo{};
     renderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renderingInfo.renderArea.offset    = VkOffset2D{0, 0};
     renderingInfo.renderArea.extent    = SwapChainExtent;
@@ -526,7 +532,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     const float extentWidth = static_cast<float>(SwapChainExtent.width);
     const float extentHeight = static_cast<float>(SwapChainExtent.height);
 
-    VkViewport viewport {};
+    VkViewport viewport{};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
     viewport.width    = extentWidth;
@@ -536,7 +542,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
 
     vkCmdSetViewport(CurrentCommandBuffer, 0, 1, &viewport);
     
-    VkRect2D scissor {};
+    VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = SwapChainExtent;
 
@@ -566,7 +572,7 @@ void CVERenderer::TransitionImageLayout(uint32_t imageIndex, VkImageLayout oldLa
 {
     const std::vector<VkImage>& swapChainImages = SwapChain.GetSwapChainImages();
     
-    VkImageMemoryBarrier2 barrier {};
+    VkImageMemoryBarrier2 barrier{};
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     barrier.srcStageMask                    = srcStageMask;
     barrier.srcAccessMask                   = srcAccessMask;
@@ -583,7 +589,7 @@ void CVERenderer::TransitionImageLayout(uint32_t imageIndex, VkImageLayout oldLa
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount     = 1;
     
-    VkDependencyInfo dependencyInfo {};
+    VkDependencyInfo dependencyInfo{};
     dependencyInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
     dependencyInfo.dependencyFlags         = 0;
     dependencyInfo.imageMemoryBarrierCount = 1;
