@@ -1,7 +1,5 @@
 #pragma once
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <glfw3.h>
 #include <vector>
@@ -10,9 +8,9 @@ class CVEWindow;
 
 struct CVESwapChainSupportDetails
 {
-    vk::SurfaceCapabilitiesKHR SurfaceCapabilities;
-    std::vector<vk::SurfaceFormatKHR> AvailableFormats;
-    std::vector<vk::PresentModeKHR> AvailablePresentModes;
+    VkSurfaceCapabilitiesKHR SurfaceCapabilities;
+    std::vector<VkSurfaceFormatKHR> AvailableFormats;
+    std::vector<VkPresentModeKHR> AvailablePresentModes;
 };
 
 class CVEDevice
@@ -26,49 +24,51 @@ public:
     CVEDevice(CVEDevice&&) = delete;
     CVEDevice& operator=(CVEDevice&&) = delete;
     
-    const vk::raii::Device& GetLogicalDevice() const;
-    vk::raii::SurfaceKHR& GetSurface();
+    const VkDevice& GetLogicalDevice() const;
+    VkSurfaceKHR& GetSurface();
     CVESwapChainSupportDetails GetSwapChainSupportDetails() const;
-    const vk::raii::CommandPool& GetCommandPool() const;
-    vk::raii::Queue& GetGraphicsQueue();
-    uint32_t FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+    const VkCommandPool& GetCommandPool() const;
+    VkQueue& GetGraphicsQueue();
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
-    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CreateBuffer(vk::DeviceSize size,
-                                                                     vk::BufferUsageFlags usageFlags,
-                                                                     vk::MemoryPropertyFlags propertyFlags);
+    void CreateBuffer(VkDeviceSize size,
+                      VkBufferUsageFlags usageFlags,
+                      VkMemoryPropertyFlags propertyFlags,
+                      VkBuffer& outBuffer,
+                      VkDeviceMemory& outBufferMemory);
     
-    vk::raii::CommandBuffer BeginSingleTimeCommands();
-    void EndSingleTimeCommands(const vk::raii::CommandBuffer& commandBuffer);
-    void CopyBuffer(const vk::raii::Buffer& source, const vk::raii::Buffer& destination, vk::DeviceSize size);
-    void CopyBufferToImage(const vk::raii::CommandBuffer &commandBuffer, const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
+    void CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
+    void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     
 private:
+    void CreateVulkanInstance();
     void CreateDebugMessenger();
-    static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
-                                                          vk::DebugUtilsMessageTypeFlagsEXT type, 
-                                                          const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                          VkDebugUtilsMessageTypeFlagsEXT type, 
+                                                          const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                           void* pUserData);
     
     void PickPhysicalDevice();
     void FindQueueFamilyIndex();
     void CreateLogicalDevice();
-    bool IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice);
+    bool IsDeviceSuitable(const VkPhysicalDevice& physicalDevice);
     
     void CreateSurface();
     
     void CreateCommandPool();
     
-    vk::raii::Context VulkanInstanceContext;
-    vk::raii::Instance VulkanInstance = nullptr;
-    vk::raii::DebugUtilsMessengerEXT DebugMessenger = nullptr;
+    VkInstance VulkanInstance;
+    VkDebugUtilsMessengerEXT DebugMessenger;
     
     CVEWindow& Window;
-    vk::raii::PhysicalDevice PhysicalDevice = nullptr;
+    VkPhysicalDevice PhysicalDevice;
     uint32_t QueueFamilyIndex = ~0;
-    vk::raii::Device LogicalDevice = nullptr;
-    vk::raii::Queue GraphicsQueue = nullptr;
+    VkDevice LogicalDevice;
+    VkQueue GraphicsQueue;
     
-    vk::raii::SurfaceKHR Surface = nullptr;
+    VkSurfaceKHR Surface;
     
-    vk::raii::CommandPool CommandPool = nullptr;
+    VkCommandPool CommandPool;
 };

@@ -3,8 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <string>
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan_core.h>
 
 class CVEDevice;
 
@@ -17,15 +16,15 @@ public:
 private:
     void CreateTexture(const std::string& filePath);
     void CreateImage(uint32_t width, uint32_t height,
-                     vk::Format format, vk::ImageTiling tiling,
-                     vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
+                     VkFormat format, VkImageTiling tiling,
+                     VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
     
-    void TransitionImageLayout(const vk::raii::CommandBuffer &commandBuffer,
-                               const vk::raii::Image &image,
-                               vk::ImageLayout oldLayout,
-                               vk::ImageLayout newLayout);
+    void TransitionImageLayout(const VkCommandBuffer &commandBuffer,
+                               const VkImage &image,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout);
     
     CVEDevice& Device;
-    vk::raii::Image TextureImage = nullptr;
-    vk::raii::DeviceMemory TextureImageMemory = nullptr;
+    VkImage TextureImage;
+    VkDeviceMemory TextureImageMemory;
 };

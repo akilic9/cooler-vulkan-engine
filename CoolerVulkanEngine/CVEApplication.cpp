@@ -13,7 +13,7 @@ void CVEApplication::Update()
         glfwPollEvents();
         Renderer.Draw();
     }
-    Device.GetLogicalDevice().waitIdle();
+    vkDeviceWaitIdle(Device.GetLogicalDevice());
 }
 
 void CVEApplication::TerminateWindow()

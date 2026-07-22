@@ -153,8 +153,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders\shaderCompile.bat" />
-    <Content Include="Shaders\triangle-glsl.frag" />
-    <Content Include="Shaders\triangle-glsl.vert" />
     <Content Include="Shaders\triangle.frag" />
     <Content Include="Shaders\triangle.frag.spv" />
     <Content Include="Shaders\triangle.vert" />

@@ -1,10 +1,9 @@
 #pragma once
 #include <string>
 #include <vector>
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan.h>
 #include <glm.hpp>
+#include <array>
 
 class CVEWindow;
 class CVESwapChain;
@@ -13,38 +12,29 @@ class CVEDevice;
 struct CVEVertex
 {
     glm::vec3 Position;
-    glm::vec3 Color;
+    glm::vec3 Colour;
     glm::vec3 Normal;
     glm::vec2 TexCoord0;
     
-    static vk::VertexInputBindingDescription GetBindingDesc()
+    static VkVertexInputBindingDescription GetBindingDesc()
     {
-        return {
-            .binding = 0,
-            .stride = sizeof(CVEVertex),
-            .inputRate = vk::VertexInputRate::eVertex};
+        VkVertexInputBindingDescription bindingDescriptions;
+        bindingDescriptions.binding   = 0;
+        bindingDescriptions.stride    = sizeof(CVEVertex);
+        bindingDescriptions.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescriptions;
     }
     
-    static std::array<vk::VertexInputAttributeDescription, 4> GetAttributeDesc()
+    static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDesc()
     {
-        return {{
-            {.location = 0,
-                .binding  = 0,
-                .format   = vk::Format::eR32G32Sfloat,
-                .offset   = offsetof(CVEVertex, Position)},
-            {.location = 1,
-                .binding  = 0,
-                .format   = vk::Format::eR32G32B32Sfloat,
-                .offset   = offsetof(CVEVertex, Color)},
-            {.location = 2,
-                .binding  = 0,
-                .format   = vk::Format::eR32G32B32Sfloat,
-                .offset   = offsetof(CVEVertex, Normal)},
-            {.location = 3,
-                .binding  = 0,
-                .format = vk::Format::eR32G32Sfloat,
-                .offset   = offsetof(CVEVertex, TexCoord0)},
-        }}; 
+        std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+
+        attributeDescriptions[0] = {.location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(CVEVertex, Position) };
+        attributeDescriptions[1] = {.location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = offsetof(CVEVertex, Colour) };
+        attributeDescriptions[2] = {.location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(CVEVertex, Normal) };
+        attributeDescriptions[3] = {.location = 3, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(CVEVertex, TexCoord0) };
+
+        return attributeDescriptions;
     }
 };
 
@@ -72,7 +62,7 @@ private:
     static std::vector<char> ReadShaderFile(const std::string& fileName);
     void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
-    vk::raii::ShaderModule CreateShaderModule(const std::vector<char>& shaderCode) const;
+    void CreateShaderModule(const std::vector<char>& shaderCode, VkShaderModule* shaderModule) const;
     
     void CreateVertexBuffer();
     void CreateIndexBuffer();
@@ -81,13 +71,13 @@ private:
     void CreateDescriptorSets();
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
-    void TransitionImageLayout(uint32_t                imageIndex,
-                               vk::ImageLayout         oldLayout,
-                               vk::ImageLayout         newLayout,
-                               vk::AccessFlags2        srcAccessMask,
-                               vk::AccessFlags2        dstAccessMask,
-                               vk::PipelineStageFlags2 srcStageMask,
-                               vk::PipelineStageFlags2 dstStageMask);
+    void TransitionImageLayout(uint32_t              imageIndex,
+                               VkImageLayout         oldLayout,
+                               VkImageLayout         newLayout,
+                               VkAccessFlags2        srcAccessMask,
+                               VkAccessFlags2        dstAccessMask,
+                               VkPipelineStageFlags2 srcStageMask,
+                               VkPipelineStageFlags2 dstStageMask);
     
     
     void UpdateUniformBuffer(uint32_t currentFrameIndex);
@@ -97,21 +87,21 @@ private:
     CVESwapChain& SwapChain;
     CVEWindow& Window;
     
-    vk::raii::DescriptorPool DescriptorPool = nullptr;
-    std::vector<vk::raii::DescriptorSet> DescriptorSets;
-    vk::raii::DescriptorSetLayout DescriptorSetLayout = nullptr;
-    vk::raii::PipelineLayout PipelineLayout = nullptr;
-    vk::raii::Pipeline GraphicsPipeline = nullptr;
+    VkDescriptorPool DescriptorPool;
+    std::vector<VkDescriptorSet> DescriptorSets;
+    VkDescriptorSetLayout DescriptorSetLayout;
+    VkPipelineLayout PipelineLayout;
+    VkPipeline GraphicsPipeline;
     
-    std::vector<vk::raii::Buffer> UniformBuffers;
-    std::vector<vk::raii::DeviceMemory> UniformBuffersMemory;
+    std::vector<VkBuffer> UniformBuffers;
+    std::vector<VkDeviceMemory> UniformBuffersMemory;
     std::vector<void *> UniformBuffersMapped;
     
-    vk::raii::Buffer VertexBuffer = nullptr;
-    vk::raii::DeviceMemory VertexBufferMemory = nullptr;
-    vk::raii::Buffer IndexBuffer = nullptr;
-    vk::raii::DeviceMemory IndexBufferMemory = nullptr;
-    std::vector<vk::raii::CommandBuffer> CommandBuffers;
+    VkBuffer VertexBuffer;
+    VkDeviceMemory VertexBufferMemory;
+    VkBuffer IndexBuffer;
+    VkDeviceMemory IndexBufferMemory;
+    std::vector<VkCommandBuffer> CommandBuffers;
     
     uint32_t CurrentFrameIndex = 0;
     

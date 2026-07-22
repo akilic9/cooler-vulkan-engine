@@ -1,8 +1,10 @@
 #include "CVEDevice.h"
 
+#include <algorithm>
 #include <glfw3.h>
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #include "CVEInstanceUtil.h"
 #include "CVEWindow.h"
@@ -10,7 +12,7 @@
 CVEDevice::CVEDevice(CVEWindow& inWindow)
     : Window(inWindow)
 {
-    VulkanInstance = CVEInstanceUtil::CreateVulkanInstance(VulkanInstanceContext);
+    CreateVulkanInstance();
     CreateDebugMessenger();
     CreateSurface();
     PickPhysicalDevice();
@@ -20,14 +22,29 @@ CVEDevice::CVEDevice(CVEWindow& inWindow)
 
 CVEDevice::~CVEDevice()
 {
+    vkDestroyCommandPool(LogicalDevice, CommandPool, nullptr);
+    vkDestroyDevice(LogicalDevice, nullptr);
+    
+    if (CVEInstanceUtil::bValidationLayersEnabled)
+    {
+        PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(VulkanInstance, "vkDestroyDebugUtilsMessengerEXT");
+    
+        if (func != nullptr)
+        {
+            func(VulkanInstance, DebugMessenger, nullptr);
+        }
+    }
+    
+    vkDestroySurfaceKHR(VulkanInstance, Surface, nullptr);
+    vkDestroyInstance(VulkanInstance, nullptr);
 }
 
-const vk::raii::Device& CVEDevice::GetLogicalDevice() const
+const VkDevice& CVEDevice::GetLogicalDevice() const
 {
     return LogicalDevice;
 }
 
-vk::raii::SurfaceKHR& CVEDevice::GetSurface()
+VkSurfaceKHR& CVEDevice::GetSurface()
 {
     return Surface;
 }
@@ -35,25 +52,41 @@ vk::raii::SurfaceKHR& CVEDevice::GetSurface()
 CVESwapChainSupportDetails CVEDevice::GetSwapChainSupportDetails() const
 {
     CVESwapChainSupportDetails details;    
-    details.SurfaceCapabilities   = PhysicalDevice.getSurfaceCapabilitiesKHR(*Surface);    
-    details.AvailableFormats      = PhysicalDevice.getSurfaceFormatsKHR(*Surface);
-    details.AvailablePresentModes = PhysicalDevice.getSurfacePresentModesKHR(*Surface);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(PhysicalDevice, Surface, &details.SurfaceCapabilities);
+    
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(PhysicalDevice, Surface, &formatCount, nullptr);    
+    if (formatCount != 0)
+    {
+        details.AvailableFormats.resize(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(PhysicalDevice, Surface, &formatCount, details.AvailableFormats.data());
+    }
+    
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(PhysicalDevice, Surface, &presentModeCount, nullptr);    
+    if (presentModeCount != 0)
+    {
+        details.AvailablePresentModes.resize(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(PhysicalDevice, Surface, &presentModeCount, details.AvailablePresentModes.data());
+    }
+    
     return details;
 }
 
-const vk::raii::CommandPool& CVEDevice::GetCommandPool() const
+const VkCommandPool& CVEDevice::GetCommandPool() const
 {
     return CommandPool;
 }
 
-vk::raii::Queue& CVEDevice::GetGraphicsQueue()
+VkQueue& CVEDevice::GetGraphicsQueue()
 {
     return GraphicsQueue;
 }
 
-uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
-    const vk::PhysicalDeviceMemoryProperties& memProperties = PhysicalDevice.getMemoryProperties();
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(PhysicalDevice, &memProperties);
     
     for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
     {
@@ -66,78 +99,130 @@ uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags 
     throw std::runtime_error("Failed to find suitable memory type!");
 }
 
-std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> CVEDevice::CreateBuffer(vk::DeviceSize size,
-                                                                            vk::BufferUsageFlags usageFlags,
-                                                                            vk::MemoryPropertyFlags propertyFlags)
+void CVEDevice::CreateBuffer(VkDeviceSize size,
+                             VkBufferUsageFlags usageFlags,
+                             VkMemoryPropertyFlags propertyFlags,
+                             VkBuffer& outBuffer,
+                             VkDeviceMemory& outBufferMemory)
 {
-    vk::BufferCreateInfo bufferCreateInfo {
-        .size        = size,
-        .usage       = usageFlags,
-        .sharingMode = vk::SharingMode::eExclusive};
+    VkBufferCreateInfo bufferCreateInfo{};
+    bufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.size        = size;
+    bufferCreateInfo.usage       = usageFlags;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vk::raii::Buffer buffer = vk::raii::Buffer(LogicalDevice, bufferCreateInfo);
+    if (vkCreateBuffer(LogicalDevice, &bufferCreateInfo, nullptr, &outBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create buffer!");
+    }
 
-    vk::MemoryRequirements memoryRequirements = buffer.getMemoryRequirements();
+    VkMemoryRequirements memoryRequirements;
+    vkGetBufferMemoryRequirements(LogicalDevice, outBuffer, &memoryRequirements);
 
-    vk::MemoryAllocateInfo memoryAllocateInfo {
-        .allocationSize  = memoryRequirements.size,
-        .memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags)};
+    VkMemoryAllocateInfo memoryAllocateInfo{};
+    memoryAllocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryAllocateInfo.allocationSize  = memoryRequirements.size;
+    memoryAllocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, propertyFlags);
 
-    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(LogicalDevice, memoryAllocateInfo);
-
-    buffer.bindMemory(*bufferMemory, 0);
-
-    return {std::move(buffer), std::move(bufferMemory)};
-}
-
-vk::raii::CommandBuffer CVEDevice::BeginSingleTimeCommands()
-{
-    vk::CommandBufferAllocateInfo allocInfo {
-        .commandPool        = CommandPool,
-        .level              = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1};
-
-    vk::raii::CommandBuffer commandBuffer = std::move(LogicalDevice.allocateCommandBuffers(allocInfo).front());
-    vk::CommandBufferBeginInfo beginInfo{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-    commandBuffer.begin(beginInfo);
-
-    return commandBuffer; // why does the original has std::move here?
-}
-
-void CVEDevice::EndSingleTimeCommands(const vk::raii::CommandBuffer& commandBuffer)
-{
-    commandBuffer.end();
+    if (vkAllocateMemory(LogicalDevice, &memoryAllocateInfo, nullptr, &outBufferMemory) != VK_SUCCESS)
+    {
+        vkDestroyBuffer(LogicalDevice, outBuffer, nullptr);
+        throw std::runtime_error("Failed to allocate buffer memory!");
+    }
     
-    vk::SubmitInfo submitInfo {.commandBufferCount = 1, .pCommandBuffers = &*commandBuffer};
-    
-    GraphicsQueue.submit(submitInfo, nullptr);
-    GraphicsQueue.waitIdle();
+    vkBindBufferMemory(LogicalDevice, outBuffer, outBufferMemory, 0);
 }
 
-void CVEDevice::CopyBuffer(const vk::raii::Buffer& source, const vk::raii::Buffer& destination, vk::DeviceSize size)
+VkCommandBuffer CVEDevice::BeginSingleTimeCommands()
 {
-    const vk::raii::CommandBuffer& commandCopyBuffer = BeginSingleTimeCommands();
-    vk::BufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
-    commandCopyBuffer.copyBuffer(*source, *destination, bufferCopy);
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool        = CommandPool;
+    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(LogicalDevice, &allocInfo, &commandBuffer);
+    
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    return commandBuffer;
+}
+
+void CVEDevice::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+    vkEndCommandBuffer(commandBuffer);
+    
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    
+    vkQueueSubmit(GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(GraphicsQueue);
+    
+    vkFreeCommandBuffers(LogicalDevice, CommandPool, 1, &commandBuffer);
+}
+
+void CVEDevice::CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size)
+{
+    const VkCommandBuffer& commandCopyBuffer = BeginSingleTimeCommands();
+    VkBufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
+    vkCmdCopyBuffer(commandCopyBuffer, source, destination, 1, &bufferCopy);
     EndSingleTimeCommands(commandCopyBuffer);
 }
 
-void CVEDevice::CopyBufferToImage(const vk::raii::CommandBuffer& commandBuffer, const vk::raii::Buffer& buffer,
-                                  vk::raii::Image& image, uint32_t width, uint32_t height)
+void CVEDevice::CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer,
+                                  VkImage image, uint32_t width, uint32_t height)
 {
-    vk::BufferImageCopy region {
-        .bufferOffset      = 0,
-        .bufferRowLength   = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource {
-            .aspectMask     = vk::ImageAspectFlagBits::eColor,
-            .mipLevel       = 0,
-            .baseArrayLayer = 0,
-            .layerCount     = 1},
-        .imageOffset       = {0, 0, 0},
-        .imageExtent       = {width, height, 1}};
+    VkImageSubresourceLayers imageSubresource{};
+    imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageSubresource.mipLevel       = 0;
+    imageSubresource.baseArrayLayer = 0;
+    imageSubresource.layerCount     = 1;
     
-    commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
+    VkBufferImageCopy region {};
+    region.bufferOffset      = 0;
+    region.bufferRowLength   = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource  = imageSubresource;
+    region.imageOffset    = {0, 0, 0};
+    region.imageExtent    = {width, height, 1};
+    
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}
+
+void CVEDevice::CreateVulkanInstance()
+{
+    VkApplicationInfo appInfo {};
+    appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName   = "CoolerVulkanEngine";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName        = "No Engine";
+    appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion         = VK_API_VERSION_1_4;
+    
+    const std::vector<const char*>& requiredLayers = CVEInstanceUtil::GetRequiredLayers();
+    CVEInstanceUtil::CheckLayersSupport(requiredLayers);
+    
+    const std::vector<const char*>& requiredExtensions = CVEInstanceUtil::GetRequiredExtensions();
+    CVEInstanceUtil::CheckExtensionsSupport(requiredExtensions);
+    
+    VkInstanceCreateInfo createInfo {};
+    createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo        = &appInfo;
+    createInfo.enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size());
+    createInfo.ppEnabledLayerNames     = requiredLayers.data();
+    createInfo.enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size());
+    createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+    
+    if (vkCreateInstance(&createInfo, nullptr, &VulkanInstance) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create instance!");
+    }
 }
 
 void CVEDevice::CreateDebugMessenger()
@@ -147,30 +232,50 @@ void CVEDevice::CreateDebugMessenger()
         return;
     }
     
-    vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+    VkDebugUtilsMessageSeverityFlagsEXT severityFlags(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
     
-    vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+    VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT);
     
-    vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT {
-        .messageSeverity = severityFlags,
-        .messageType     = messageTypeFlags,
-        .pfnUserCallback = &DebugCallback};
+    VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT {};
+    debugUtilsMessengerCreateInfoEXT.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debugUtilsMessengerCreateInfoEXT.messageSeverity = severityFlags;
+    debugUtilsMessengerCreateInfoEXT.messageType     = messageTypeFlags;
+    debugUtilsMessengerCreateInfoEXT.pfnUserCallback = &DebugCallback;
     
-    DebugMessenger = VulkanInstance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfoEXT);
+    PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCreateDebugUtilsMessengerEXT");
+
+    if (func != nullptr)
+    {
+        func(VulkanInstance, &debugUtilsMessengerCreateInfoEXT, nullptr, &DebugMessenger);
+    }
+    else
+    {
+        throw std::runtime_error("Failed to set up debug messenger!");
+    }
 }
 
-vk::Bool32 CVEDevice::DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type,
-                                    const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL CVEDevice::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
+                                    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-    std::cerr << "Validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
+    std::cerr << "Validation layer: type " << std::to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
 
-    return vk::False;
+    return VK_FALSE;
 }
 
 void CVEDevice::PickPhysicalDevice()
 {
-    const std::vector<vk::raii::PhysicalDevice>& physicalDevices = VulkanInstance.enumeratePhysicalDevices();
-    const auto deviceIt = std::ranges::find_if(physicalDevices, [&](const vk::raii::PhysicalDevice& physicalDevice)
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(VulkanInstance, &deviceCount, nullptr);
+    
+    if (deviceCount == 0)
+    {
+        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+    }
+    
+    std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
+    vkEnumeratePhysicalDevices(VulkanInstance, &deviceCount, physicalDevices.data());
+    
+    const auto deviceIt = std::ranges::find_if(physicalDevices, [&](const VkPhysicalDevice& physicalDevice)
     {
         return IsDeviceSuitable(physicalDevice);
     });
@@ -185,11 +290,18 @@ void CVEDevice::PickPhysicalDevice()
 
 void CVEDevice::FindQueueFamilyIndex()
 {
-    const std::vector<vk::QueueFamilyProperties>& queueFamilyProperties = PhysicalDevice.getQueueFamilyProperties();
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &queueFamilyCount, nullptr);
+    
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &queueFamilyCount, queueFamilyProperties.data());
 
     for (uint32_t qfpIndex = 0; qfpIndex < queueFamilyProperties.size(); qfpIndex++)
     {
-        if ((queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eGraphics) && PhysicalDevice.getSurfaceSupportKHR(qfpIndex, *Surface))
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, qfpIndex, Surface, &presentSupport);
+        
+        if ((queueFamilyProperties[qfpIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport)
         {
             QueueFamilyIndex = qfpIndex;
             break;
@@ -206,80 +318,125 @@ void CVEDevice::CreateLogicalDevice()
 {
     FindQueueFamilyIndex();
     
-    vk::StructureChain<vk::PhysicalDeviceFeatures2,
-                       vk::PhysicalDeviceVulkan11Features, 
-                       vk::PhysicalDeviceVulkan13Features,
-                       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
-        {},
-        {.shaderDrawParameters = true},
-        {.synchronization2 = true,
-            .dynamicRendering = true},
-        {.extendedDynamicState = true}};
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extDynamicStateFeatures{};
+    extDynamicStateFeatures.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    extDynamicStateFeatures.extendedDynamicState = VK_TRUE;
+
+    VkPhysicalDeviceVulkan13Features vk13Features{};
+    vk13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    vk13Features.pNext            = &extDynamicStateFeatures;
+    vk13Features.synchronization2 = VK_TRUE;
+    vk13Features.dynamicRendering = VK_TRUE;
+
+    VkPhysicalDeviceVulkan11Features vk11Features{};
+    vk11Features.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    vk11Features.pNext                = &vk13Features;
+    vk11Features.shaderDrawParameters = VK_TRUE;
+
+    VkPhysicalDeviceFeatures2 featureChain{};
+    featureChain.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    featureChain.pNext = &vk11Features;
     
-    const float queuePriority = 0.5f;    
-    vk::DeviceQueueCreateInfo deviceQueueCreateInfo {
-        .queueFamilyIndex = QueueFamilyIndex,
-        .queueCount       = 1,
-        .pQueuePriorities = &queuePriority};
+    const float queuePriority = 0.5f;
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo {};
+    deviceQueueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueCreateInfo.queueFamilyIndex = QueueFamilyIndex;
+    deviceQueueCreateInfo.queueCount       = 1;
+    deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
     
-    vk::DeviceCreateInfo deviceCreateInfo {
-        .pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
-        .queueCreateInfoCount    = 1,
-        .pQueueCreateInfos       = &deviceQueueCreateInfo,
-        .enabledExtensionCount   = static_cast<uint32_t>(CVEInstanceUtil::RequiredDeviceExtensions.size()),
-        .ppEnabledExtensionNames = CVEInstanceUtil::RequiredDeviceExtensions.data()};
+    VkDeviceCreateInfo deviceCreateInfo {};
+    deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pNext                   = &featureChain;
+    deviceCreateInfo.queueCreateInfoCount    = 1;
+    deviceCreateInfo.pQueueCreateInfos       = &deviceQueueCreateInfo;
+    deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(CVEInstanceUtil::RequiredDeviceExtensions.size());
+    deviceCreateInfo.ppEnabledExtensionNames = CVEInstanceUtil::RequiredDeviceExtensions.data();
     
-    LogicalDevice = vk::raii::Device(PhysicalDevice, deviceCreateInfo);
-    GraphicsQueue = vk::raii::Queue(LogicalDevice, QueueFamilyIndex, 0);
+    if (vkCreateDevice(PhysicalDevice, &deviceCreateInfo, nullptr, &LogicalDevice) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create logical device!");
+    }
+    
+    vkGetDeviceQueue(LogicalDevice, QueueFamilyIndex, 0, &GraphicsQueue);
 }
 
-bool CVEDevice::IsDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice)
+// TODO: Split
+bool CVEDevice::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice)
 {
-    const bool bSupportsVulkan1_3 = physicalDevice.getProperties().apiVersion >= vk::ApiVersion13;
+    VkPhysicalDeviceProperties2 deviceProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties);
+    
+    const bool bSupportsVulkan1_3 = deviceProperties.properties.apiVersion >= VK_API_VERSION_1_3;
 
-    const std::vector<vk::QueueFamilyProperties>& queueFamilies = physicalDevice.getQueueFamilyProperties();
-    const bool bSupportsGraphics = std::ranges::any_of(queueFamilies, [](const vk::QueueFamilyProperties& queueFamilyProperty)
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+    
+    const bool bSupportsGraphics = std::ranges::any_of(queueFamilies, [](const VkQueueFamilyProperties& queueFamilyProperty)
     {
-        return !!(queueFamilyProperty.queueFlags & vk::QueueFlagBits::eGraphics);
+        return !!(queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT);
     });
 
-    const std::vector<vk::ExtensionProperties>& availableDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+    
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
     
     //TODO: these nested lambdas may be hard to read
-    const bool bSupportsAllRequiredExtensions = std::ranges::all_of(CVEInstanceUtil::RequiredDeviceExtensions, [&availableDeviceExtensions](const char* requiredDeviceExtension)
+    const bool bSupportsAllRequiredExtensions = std::ranges::all_of(CVEInstanceUtil::RequiredDeviceExtensions, [&availableExtensions](const char* requiredDeviceExtension)
     {
-        return std::ranges::any_of(availableDeviceExtensions, [requiredDeviceExtension](const vk::ExtensionProperties& availableDeviceExtension)
+        return std::ranges::any_of(availableExtensions, [requiredDeviceExtension](const VkExtensionProperties& availableDeviceExtension)
         {
             return strcmp(availableDeviceExtension.extensionName, requiredDeviceExtension) == 0;
         });
     });
 
-    auto features = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
-                                                               vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extDynStateFeatures{};
+    extDynStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+
+    VkPhysicalDeviceVulkan13Features vk13Features{};
+    vk13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    vk13Features.pNext = &extDynStateFeatures;
+
+    VkPhysicalDeviceVulkan11Features vk11Features{};
+    vk11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    vk11Features.pNext = &vk13Features;
+
+    VkPhysicalDeviceFeatures2 features{};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &vk11Features;
     
-    bool bSupportsRequiredFeatures = features.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters &&
-                                     features.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
-                                     features.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 &&
-                                     features.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &features);
+    
+    bool bSupportsRequiredFeatures = vk11Features.shaderDrawParameters &&
+                                     vk13Features.dynamicRendering     &&
+                                     vk13Features.synchronization2     &&
+                                     extDynStateFeatures.extendedDynamicState;
     
     return bSupportsVulkan1_3 && bSupportsGraphics && bSupportsAllRequiredExtensions && bSupportsRequiredFeatures;
 }
 
 void CVEDevice::CreateSurface()
 {
-    VkSurfaceKHR surface;
-    if (glfwCreateWindowSurface(*VulkanInstance, Window.GetGLFWWindow(), nullptr, &surface) != 0)
+    if (glfwCreateWindowSurface(VulkanInstance, Window.GetGLFWWindow(), nullptr, &Surface) != 0)
     {
         throw std::runtime_error("Failed to create window surface!");
     }
-    Surface = vk::raii::SurfaceKHR(VulkanInstance, surface);
 }
 
 void CVEDevice::CreateCommandPool()
 {
-    vk::CommandPoolCreateInfo poolCreateInfo {
-        .flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-        .queueFamilyIndex = QueueFamilyIndex};
+    VkCommandPoolCreateInfo poolCreateInfo {};
+    poolCreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolCreateInfo.pNext            = nullptr;
+    poolCreateInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolCreateInfo.queueFamilyIndex = QueueFamilyIndex;
     
-    CommandPool = vk::raii::CommandPool(LogicalDevice, poolCreateInfo);
+    if (vkCreateCommandPool(LogicalDevice, &poolCreateInfo, nullptr, &CommandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create command pool!");
+    }
 }
