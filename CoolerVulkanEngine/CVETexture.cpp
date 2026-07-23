@@ -95,6 +95,53 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     }
 }
 
+void CVETexture::CreateImageView()
+{
+    VkImageViewCreateInfo createInfo{};
+    createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfo.image    = TextureImage;
+    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    createInfo.format   = VK_FORMAT_R8G8B8A8_SRGB;
+    createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    createInfo.subresourceRange.baseMipLevel   = 0;
+    createInfo.subresourceRange.levelCount     = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount     = 1;
+    
+    if (vkCreateImageView(Device.GetLogicalDevice(), &createInfo, nullptr, &TextureImageView) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create image view!");
+    }
+}
+
+void CVETexture::CreateSampler()
+{    
+    VkPhysicalDeviceProperties physicalDeviceProperties = Device.GetPhysicalDeviceProperties();
+    
+    VkSamplerCreateInfo createInfo{};
+    createInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    createInfo.magFilter               = VK_FILTER_LINEAR;
+    createInfo.minFilter               = VK_FILTER_LINEAR;
+    createInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    createInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    createInfo.anisotropyEnable        = VK_TRUE;
+    createInfo.maxAnisotropy           = physicalDeviceProperties.limits.maxSamplerAnisotropy;
+    createInfo.compareEnable           = VK_FALSE;
+    createInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+    createInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    createInfo.unnormalizedCoordinates = VK_FALSE;
+    createInfo.mipLodBias              = 0.f;
+    createInfo.minLod                  = 0.f;
+    createInfo.maxLod                  = 0.f;
+    
+    if (vkCreateSampler(Device.GetLogicalDevice(), &createInfo, nullptr, &TextureSampler) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create sampler!");
+    }
+}
+
 void CVETexture::TransitionImageLayout(VkCommandBuffer commandBuffer,
                                        VkImage         image,
                                        VkImageLayout   oldLayout,

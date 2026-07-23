@@ -99,6 +99,13 @@ uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
     throw std::runtime_error("Failed to find suitable memory type!");
 }
 
+VkPhysicalDeviceProperties CVEDevice::GetPhysicalDeviceProperties()
+{
+    VkPhysicalDeviceProperties deviceProperties{};    
+    vkGetPhysicalDeviceProperties(PhysicalDevice, &deviceProperties);
+    return deviceProperties;
+}
+
 void CVEDevice::CreateBuffer(VkDeviceSize size,
                              VkBufferUsageFlags usageFlags,
                              VkMemoryPropertyFlags propertyFlags,
@@ -334,10 +341,12 @@ void CVEDevice::CreateLogicalDevice()
     vk11Features.shaderDrawParameters = VK_TRUE;
 
     VkPhysicalDeviceFeatures2 featureChain{};
-    featureChain.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    featureChain.pNext = &vk11Features;
+    featureChain.sType                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    featureChain.pNext                      = &vk11Features;
+    featureChain.features.samplerAnisotropy = VK_TRUE;
     
     const float queuePriority = 0.5f;
+    
     VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
     deviceQueueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     deviceQueueCreateInfo.queueFamilyIndex = QueueFamilyIndex;
@@ -408,8 +417,9 @@ bool CVEDevice::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
     vk11Features.pNext = &vk13Features;
 
     VkPhysicalDeviceFeatures2 features{};
-    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    features.pNext = &vk11Features;
+    features.sType                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext                      = &vk11Features;
+    features.features.samplerAnisotropy = VK_TRUE;
     
     vkGetPhysicalDeviceFeatures2(physicalDevice, &features);
     

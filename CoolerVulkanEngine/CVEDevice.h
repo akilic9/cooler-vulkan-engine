@@ -30,6 +30,7 @@ public:
     const VkCommandPool& GetCommandPool() const;
     VkQueue& GetGraphicsQueue();
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+    VkPhysicalDeviceProperties GetPhysicalDeviceProperties();
     
     void CreateBuffer(VkDeviceSize          size,
                       VkBufferUsageFlags    usageFlags,
