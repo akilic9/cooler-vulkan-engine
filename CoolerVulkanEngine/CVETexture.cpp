@@ -10,12 +10,25 @@ CVETexture::CVETexture(CVEDevice& device, const std::string& filePath)
     : Device(device)
 {
     CreateTexture(filePath);
+    CreateImageView();
+    CreateSampler();
 }
 
 CVETexture::~CVETexture()
 {
     vkDestroyImage(Device.GetLogicalDevice(), TextureImage, nullptr);
     vkFreeMemory(Device.GetLogicalDevice(), TextureImageMemory, nullptr);
+    vkDestroyImageView(Device.GetLogicalDevice(), TextureImageView, nullptr);
+    vkDestroySampler(Device.GetLogicalDevice(), TextureSampler, nullptr);
+}
+
+VkDescriptorImageInfo CVETexture::GetDescriptorImageInfo()
+{
+    VkDescriptorImageInfo descriptorImageInfo{};
+    descriptorImageInfo.sampler     = TextureSampler;
+    descriptorImageInfo.imageView   = TextureImageView;
+    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    return descriptorImageInfo;
 }
 
 void CVETexture::CreateTexture(const std::string& filePath)

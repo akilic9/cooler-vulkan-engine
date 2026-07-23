@@ -15,6 +15,7 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
     : Device(inDevice)
     , SwapChain(inSwapChain)
     , Window(inWindow)
+    , Texture(Device, "Assets/pikachu.gif")
 {
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
@@ -88,11 +89,12 @@ void CVERenderer::Draw()
         throw std::runtime_error("Failed to acquire swap chain image!");
     }
     
+    UpdateUniformBuffer(CurrentFrameIndex);
+    
     SwapChain.ResetFences(CurrentFrameIndex);
     
     vkResetCommandBuffer(CommandBuffers[CurrentFrameIndex], 0);
     RecordCommandBuffer(imageIndex);
-    UpdateUniformBuffer(CurrentFrameIndex);
 
     result = SwapChain.SubmitCommandBuffer(CommandBuffers[CurrentFrameIndex], CurrentFrameIndex, imageIndex);
     
@@ -149,16 +151,20 @@ std::vector<char> CVERenderer::ReadShaderFile(const std::string& fileName)
 
 void CVERenderer::CreateDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding         = 0;
-    uboLayoutBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
+    std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings{};
+    uboLayoutBindings[0].binding         = 0;
+    uboLayoutBindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBindings[0].descriptorCount = 1;
+    uboLayoutBindings[0].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBindings[1].binding         = 1;
+    uboLayoutBindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    uboLayoutBindings[1].descriptorCount = 1;
+    uboLayoutBindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
     
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings    = &uboLayoutBinding;
+    layoutInfo.bindingCount = static_cast<uint32_t>(uboLayoutBindings.size());
+    layoutInfo.pBindings    = uboLayoutBindings.data();
     
     if (vkCreateDescriptorSetLayout(Device.GetLogicalDevice(), &layoutInfo, nullptr, &DescriptorSetLayout) != VK_SUCCESS)
     {
@@ -166,6 +172,7 @@ void CVERenderer::CreateDescriptorSetLayout()
     }
 }
 
+// TODO: Split/move
 void CVERenderer::CreateGraphicsPipeline()
 {
     const std::vector<char>& vertexShader = ReadShaderFile("Shaders/triangle.vert.spv");
@@ -242,7 +249,7 @@ void CVERenderer::CreateGraphicsPipeline()
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.cullMode                = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.frontFace               = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable         = VK_FALSE;
     rasterizer.lineWidth               = 1.0f;
     
@@ -327,6 +334,7 @@ void CVERenderer::CreateShaderModule(const std::vector<char>& shaderCode, VkShad
     }
 }
 
+// TODO: function for vertex and index are similar, unify
 void CVERenderer::CreateVertexBuffer()
 {
     VkDeviceSize bufferSize = sizeof(Vertices[0]) * Vertices.size();
@@ -397,16 +405,18 @@ void CVERenderer::CreateUniformBuffers()
 
 void CVERenderer::CreateDescriptorPool()
 {
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = CVESwapChain::MAX_FRAMES_IN_FLIGHT;
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = CVESwapChain::MAX_FRAMES_IN_FLIGHT;
+    poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = CVESwapChain::MAX_FRAMES_IN_FLIGHT;
     
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     poolInfo.maxSets       = CVESwapChain::MAX_FRAMES_IN_FLIGHT;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes    = &poolSize;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes    = poolSizes.data();
     
     if (vkCreateDescriptorPool(Device.GetLogicalDevice(), &poolInfo, nullptr, &DescriptorPool) != VK_SUCCESS)
     {
@@ -438,16 +448,25 @@ void CVERenderer::CreateDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(CVEUniformBufferObject);
         
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet          = DescriptorSets[i];
-        descriptorWrite.dstBinding      = 0;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.pBufferInfo     = &bufferInfo;
+        VkDescriptorImageInfo imageInfo = Texture.GetDescriptorImageInfo();
         
-        vkUpdateDescriptorSets(Device.GetLogicalDevice(), 1, &descriptorWrite, 0, nullptr);
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet          = DescriptorSets[i];
+        descriptorWrites[0].dstBinding      = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].pBufferInfo     = &bufferInfo;
+        descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet          = DescriptorSets[i];
+        descriptorWrites[1].dstBinding      = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].pImageInfo      = &imageInfo;
+        
+        vkUpdateDescriptorSets(Device.GetLogicalDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     }
 }
 

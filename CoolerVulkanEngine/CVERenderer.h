@@ -5,6 +5,8 @@
 #include <glm.hpp>
 #include <array>
 
+#include "CVETexture.h"
+
 class CVEWindow;
 class CVESwapChain;
 class CVEDevice;
@@ -106,10 +108,12 @@ private:
     uint32_t CurrentFrameIndex = 0;
     
     const std::vector<CVEVertex> Vertices {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
+    {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
     
     const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0};
+    
+    CVETexture Texture;
 };
