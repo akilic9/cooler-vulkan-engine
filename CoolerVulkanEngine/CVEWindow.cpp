@@ -11,18 +11,14 @@ CVEWindow::CVEWindow(const uint32_t inWidth, const uint32_t inHeight, const char
 
 CVEWindow::~CVEWindow()
 {
+    glfwDestroyWindow(Window);
+
+    glfwTerminate();
 }
 
 bool CVEWindow::GetShouldClose() const
 {
     return glfwWindowShouldClose(Window);
-}
-
-void CVEWindow::Terminate()
-{
-    glfwDestroyWindow(Window);
-
-    glfwTerminate();
 }
 
 GLFWwindow* CVEWindow::GetGLFWWindow() const

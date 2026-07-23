@@ -18,7 +18,6 @@ public:
 
 private:
     void Update();
-    void TerminateWindow();
     
     CVEWindow Window{CVEDefaultWindowParams::DEFAULT_WINDOW_WIDTH, CVEDefaultWindowParams::DEFAULT_WINDOW_HEIGHT, CVEDefaultWindowParams::DEFAULT_WINDOW_TITLE};
     CVEDevice Device{Window};

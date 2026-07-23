@@ -32,9 +32,13 @@ CVESwapChain::~CVESwapChain()
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        vkDestroySemaphore(Device.GetLogicalDevice(), RenderFinishedSemaphores[i], nullptr);
-        vkDestroySemaphore(Device.GetLogicalDevice(), RenderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(Device.GetLogicalDevice(), PresentCompleteSemaphores[i], nullptr);
         vkDestroyFence(Device.GetLogicalDevice(), InFlightFences[i], nullptr);
+    }
+    
+    for (const VkSemaphore& semaphore : RenderFinishedSemaphores)
+    {
+        vkDestroySemaphore(Device.GetLogicalDevice(), semaphore, nullptr);
     }
 }
 
@@ -60,11 +64,17 @@ void CVESwapChain::CreateSwapChain(const std::array<int, 2>& windowExtent)
     swapChainCreateInfo.presentMode      = ChoosePresentMode(SwapChainDetails.AvailablePresentModes);
     swapChainCreateInfo.clipped          = true;
     
-    swapChainCreateInfo.oldSwapchain = SwapChain;
+    VkSwapchainKHR oldSwapChain = SwapChain;
+    swapChainCreateInfo.oldSwapchain = oldSwapChain;
         
     if (vkCreateSwapchainKHR(Device.GetLogicalDevice(), &swapChainCreateInfo, nullptr, &SwapChain) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create swap chain!");
+    }
+    
+    if (oldSwapChain != VK_NULL_HANDLE)
+    {
+        vkDestroySwapchainKHR(Device.GetLogicalDevice(), oldSwapChain, nullptr);
     }
     
     vkGetSwapchainImagesKHR(Device.GetLogicalDevice(), SwapChain, &minImageCount, nullptr);
@@ -113,7 +123,7 @@ VkResult CVESwapChain::AcquireNextImage(const uint32_t frameIndex, uint32_t* ima
 
 void CVESwapChain::WaitForFences(const uint32_t frameIndex)
 {    
-    const VkResult& fenceResult = vkWaitForFences(Device.GetLogicalDevice(), 1, &InFlightFences[frameIndex], VK_TRUE, UINT64_MAX);
+    const VkResult fenceResult = vkWaitForFences(Device.GetLogicalDevice(), 1, &InFlightFences[frameIndex], VK_TRUE, UINT64_MAX);
     
     if (fenceResult != VK_SUCCESS)
     {
@@ -126,7 +136,7 @@ void CVESwapChain::ResetFences(const uint32_t frameIndex)
     vkResetFences(Device.GetLogicalDevice(), 1, &InFlightFences[frameIndex]);
 }
 
-VkResult CVESwapChain::SubmitCommandBuffer(const VkCommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex)
+VkResult CVESwapChain::SubmitCommandBuffer(VkCommandBuffer commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex)
 {
     VkPipelineStageFlags waitDestinationStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     
@@ -156,7 +166,7 @@ VkResult CVESwapChain::SubmitCommandBuffer(const VkCommandBuffer& commandBuffer,
     return vkQueuePresentKHR(Device.GetGraphicsQueue(), &presentInfoKHR);
 }
 
-VkExtent2D CVESwapChain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent)
+VkExtent2D CVESwapChain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, std::array<int, 2> windowExtent)
 {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
     {

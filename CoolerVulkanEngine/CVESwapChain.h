@@ -29,12 +29,12 @@ public:
     VkResult AcquireNextImage(const uint32_t frameIndex, uint32_t* imageIndex);    
     void WaitForFences(const uint32_t frameIndex);
     void ResetFences(const uint32_t frameIndex);
-    VkResult SubmitCommandBuffer(const VkCommandBuffer& commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);    
+    VkResult SubmitCommandBuffer(VkCommandBuffer commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);    
     
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     
 private:
-    VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const std::array<int, 2>& windowExtent);
+    VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, std::array<int, 2> windowExtent);
     VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     uint32_t ChooseMinImageCount(const VkSurfaceCapabilitiesKHR& capabilities);
@@ -44,7 +44,7 @@ private:
     
     CVEDevice& Device;
     VkSurfaceKHR& Surface;
-    VkSwapchainKHR SwapChain;
+    VkSwapchainKHR SwapChain = VK_NULL_HANDLE;
     std::vector<VkImage> SwapChainImages;
     VkExtent2D Extent;
     VkSurfaceFormatKHR SurfaceFormat;

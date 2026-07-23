@@ -53,7 +53,7 @@ private:
     void PickPhysicalDevice();
     void FindQueueFamilyIndex();
     void CreateLogicalDevice();
-    bool IsDeviceSuitable(const VkPhysicalDevice& physicalDevice);
+    bool IsDeviceSuitable(VkPhysicalDevice physicalDevice);
     
     void CreateSurface();
     

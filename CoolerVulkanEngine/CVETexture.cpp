@@ -1,6 +1,8 @@
 #include "CVETexture.h"
 
 #include <stdexcept>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "CVEDevice.h"
 
@@ -93,12 +95,13 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     }
 }
 
-void CVETexture::TransitionImageLayout(const VkCommandBuffer& commandBuffer,
-                                       const VkImage& image,
-                                       VkImageLayout oldLayout,
-                                       VkImageLayout newLayout)
+void CVETexture::TransitionImageLayout(VkCommandBuffer commandBuffer,
+                                       VkImage         image,
+                                       VkImageLayout   oldLayout,
+                                       VkImageLayout   newLayout)
 {
     VkImageMemoryBarrier barrier{};
+    barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout                   = oldLayout;
     barrier.newLayout                   = newLayout;
     barrier.srcQueueFamilyIndex         = VK_QUEUE_FAMILY_IGNORED;

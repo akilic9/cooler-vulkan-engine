@@ -12,7 +12,6 @@ public:
     CVEWindow &operator=(const CVEWindow&) = delete;
     
     bool GetShouldClose() const;
-    void Terminate();
     GLFWwindow* GetGLFWWindow() const;
     bool GetWasResized() const;
     void ResetResizeFlag();

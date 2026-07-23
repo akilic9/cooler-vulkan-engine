@@ -3,7 +3,6 @@
 void CVEApplication::Run()
 {
     Update();
-    TerminateWindow();
 }
 
 void CVEApplication::Update()
@@ -14,10 +13,4 @@ void CVEApplication::Update()
         Renderer.Draw();
     }
     vkDeviceWaitIdle(Device.GetLogicalDevice());
-}
-
-void CVEApplication::TerminateWindow()
-{
-    SwapChain.CleanUp();
-    Window.Terminate();
 }

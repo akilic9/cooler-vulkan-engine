@@ -169,7 +169,7 @@ void CVEDevice::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
 
 void CVEDevice::CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size)
 {
-    const VkCommandBuffer& commandCopyBuffer = BeginSingleTimeCommands();
+    VkCommandBuffer commandCopyBuffer = BeginSingleTimeCommands();
     VkBufferCopy bufferCopy {.srcOffset = 0, .dstOffset = 0, .size = size};
     vkCmdCopyBuffer(commandCopyBuffer, source, destination, 1, &bufferCopy);
     EndSingleTimeCommands(commandCopyBuffer);
@@ -361,7 +361,7 @@ void CVEDevice::CreateLogicalDevice()
 }
 
 // TODO: Split
-bool CVEDevice::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice)
+bool CVEDevice::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
 {
     VkPhysicalDeviceProperties2 deviceProperties{};
     deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
