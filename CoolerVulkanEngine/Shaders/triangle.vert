@@ -11,7 +11,7 @@ ConstantBuffer<UniformBufferObject> ubo : register(b0, space0);
 struct VSInput
 {
     [[vk::location(0)]] float3 position : POSITION0;
-    [[vk::location(1)]] float3 colour : COLOR0;
+    [[vk::location(1)]] float4 colour : COLOR0;
     [[vk::location(2)]] float3 normal : NORMAL0;
     [[vk::location(3)]] float2 texCoord0 : TEXCOORD0;
 };
@@ -19,7 +19,7 @@ struct VSInput
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    [[vk::location(0)]] float3 colour : COLOR0;
+    [[vk::location(0)]] float4 colour : COLOR0;
     [[vk::location(1)]] float2 texCoord0 : TEXCOORD0;
 };
 

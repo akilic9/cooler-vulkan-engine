@@ -30,7 +30,8 @@ public:
     const VkCommandPool& GetCommandPool() const;
     VkQueue& GetGraphicsQueue();
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-    VkPhysicalDeviceProperties GetPhysicalDeviceProperties();
+    void GetPhysicalDeviceProperties(VkPhysicalDeviceProperties& outProperties);
+    void GetDeviceFormatProperties(VkFormat format, VkFormatProperties& outFormatProperties);
     
     void CreateBuffer(VkDeviceSize          size,
                       VkBufferUsageFlags    usageFlags,
@@ -42,6 +43,11 @@ public:
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
     void CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void CreateImageFromInfo(const VkImageCreateInfo& imageCreateInfo,
+                             VkMemoryPropertyFlags memoryProperties,
+                             VkImage& outImage,
+                             VkDeviceMemory& outMemory);
+    void CreateImageViewFromInfo(const VkImageViewCreateInfo& imageViewCreateInfo, VkImageView& outImageView);
     
 private:
     void CreateVulkanInstance();

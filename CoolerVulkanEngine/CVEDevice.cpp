@@ -99,11 +99,14 @@ uint32_t CVEDevice::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
     throw std::runtime_error("Failed to find suitable memory type!");
 }
 
-VkPhysicalDeviceProperties CVEDevice::GetPhysicalDeviceProperties()
+void CVEDevice::GetPhysicalDeviceProperties(VkPhysicalDeviceProperties& outProperties)
+{  
+    vkGetPhysicalDeviceProperties(PhysicalDevice, &outProperties);
+}
+
+void CVEDevice::GetDeviceFormatProperties(VkFormat format, VkFormatProperties& outFormatProperties)
 {
-    VkPhysicalDeviceProperties deviceProperties{};    
-    vkGetPhysicalDeviceProperties(PhysicalDevice, &deviceProperties);
-    return deviceProperties;
+    vkGetPhysicalDeviceFormatProperties(PhysicalDevice, format, &outFormatProperties);
 }
 
 void CVEDevice::CreateBuffer(VkDeviceSize size,
@@ -200,6 +203,45 @@ void CVEDevice::CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer
     region.imageExtent       = {width, height, 1};
     
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}
+
+void CVEDevice::CreateImageFromInfo(const VkImageCreateInfo& imageCreateInfo,
+                                    VkMemoryPropertyFlags memoryProperties,
+                                    VkImage& outImage,
+                                    VkDeviceMemory& outMemory)
+{
+    if (vkCreateImage(LogicalDevice, &imageCreateInfo, nullptr, &outImage) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create image!");
+    }
+    
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(LogicalDevice, outImage, &memoryRequirements);
+    
+    uint32_t memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, memoryProperties);
+    
+    VkMemoryAllocateInfo memoryAllocateInfo{};
+    memoryAllocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryAllocateInfo.allocationSize  = memoryRequirements.size;
+    memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+    
+    if (vkAllocateMemory(LogicalDevice, &memoryAllocateInfo, nullptr, &outMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to allocate image memory!");
+    }
+    
+    if (vkBindImageMemory(LogicalDevice, outImage, outMemory, 0) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to bind image memory!");
+    }
+}
+
+void CVEDevice::CreateImageViewFromInfo(const VkImageViewCreateInfo& imageViewCreateInfo, VkImageView& outImageView)
+{
+    if (vkCreateImageView(LogicalDevice, &imageViewCreateInfo, nullptr, &outImageView) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create image view!");
+    }
 }
 
 void CVEDevice::CreateVulkanInstance()

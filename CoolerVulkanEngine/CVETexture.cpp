@@ -82,30 +82,7 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     imageInfo.usage       = usage;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     
-    if (vkCreateImage(Device.GetLogicalDevice(), &imageInfo, nullptr, &TextureImage) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create image!");
-    }
-    
-    VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(Device.GetLogicalDevice(), TextureImage, &memoryRequirements);
-    
-    uint32_t memoryTypeIndex = Device.FindMemoryType(memoryRequirements.memoryTypeBits, properties);
-    
-    VkMemoryAllocateInfo memoryAllocateInfo{};
-    memoryAllocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.allocationSize  = memoryRequirements.size;
-    memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
-    
-    if (vkAllocateMemory(Device.GetLogicalDevice(), &memoryAllocateInfo, nullptr, &TextureImageMemory) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to allocate image memory!");
-    }
-    
-    if (vkBindImageMemory(Device.GetLogicalDevice(), TextureImage, TextureImageMemory, 0) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to bind image memory!");
-    }
+    Device.CreateImageFromInfo(imageInfo, properties, TextureImage, TextureImageMemory);
 }
 
 void CVETexture::CreateImageView()
@@ -121,15 +98,13 @@ void CVETexture::CreateImageView()
     createInfo.subresourceRange.baseArrayLayer = 0;
     createInfo.subresourceRange.layerCount     = 1;
     
-    if (vkCreateImageView(Device.GetLogicalDevice(), &createInfo, nullptr, &TextureImageView) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create image view!");
-    }
+    Device.CreateImageViewFromInfo(createInfo, TextureImageView);
 }
 
 void CVETexture::CreateSampler()
 {    
-    VkPhysicalDeviceProperties physicalDeviceProperties = Device.GetPhysicalDeviceProperties();
+    VkPhysicalDeviceProperties physicalDeviceProperties {};
+    Device.GetPhysicalDeviceProperties(physicalDeviceProperties);
     
     VkSamplerCreateInfo createInfo{};
     createInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

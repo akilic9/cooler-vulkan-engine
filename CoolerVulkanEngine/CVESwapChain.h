@@ -18,18 +18,20 @@ public:
     CVESwapChain& operator=(CVESwapChain&&) = delete;
     
     void RecreateSwapChain(const std::array<int, 2>& windowExtent);
-    void CleanUp();
     
     const VkSurfaceFormatKHR& GetSurfaceFormat() const;
     const VkSwapchainKHR& GetSwapChain() const;
     const VkExtent2D& GetExtent() const;
     const std::vector<VkImage>& GetSwapChainImages() const;
     const std::vector<VkImageView>& GetSwapChainImageViews() const;
+    void GetDepthAttachmentInfo(VkRenderingAttachmentInfo& outAttachmentInfo);
+    VkImage GetDepthImage() const;
+    VkFormat GetDepthFormat();
     
     VkResult AcquireNextImage(const uint32_t frameIndex, uint32_t* imageIndex);    
     void WaitForFences(const uint32_t frameIndex);
     void ResetFences(const uint32_t frameIndex);
-    VkResult SubmitCommandBuffer(VkCommandBuffer commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);    
+    VkResult SubmitCommandBuffer(VkCommandBuffer commandBuffer, const uint32_t frameIndex, const uint32_t imageIndex);
     
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     
@@ -41,6 +43,11 @@ private:
     void CreateSwapChain(const std::array<int, 2>& windowExtent);
     void CreateImageViews();
     void CreateSyncObjects();
+    void CreateDepthResources();
+    void FindDepthFormat();
+    void DestroyImageViews();
+    void DestroyDepthResources();
+    void CleanUp(bool bDestruction = false);
     
     CVEDevice& Device;
     VkSurfaceKHR& Surface;
@@ -53,4 +60,9 @@ private:
     std::vector<VkSemaphore> PresentCompleteSemaphores;
     std::vector<VkSemaphore> RenderFinishedSemaphores;
     std::vector<VkFence> InFlightFences;
+    
+    VkImage DepthImage;
+    VkDeviceMemory DepthImageMemory;
+    VkImageView DepthImageView;
+    VkFormat DepthFormat;
 };

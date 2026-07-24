@@ -6,7 +6,7 @@ SamplerState textureSampler : register(s1, space0);
 
 struct PSInput
 {
-    [[vk::location(0)]] float3 colour : COLOR0;
+    [[vk::location(0)]] float4 colour : COLOR0;
     [[vk::location(1)]] float2 texCoord0 : TEXCOORD0;
 };
 

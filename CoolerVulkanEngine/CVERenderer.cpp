@@ -1,6 +1,7 @@
 #include "CVERenderer.h"
 
 #include <fstream>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <chrono>
@@ -10,6 +11,7 @@
 #include "CVESwapChain.h"
 #include "CVEWindow.h"
 
+// TODO : This file need cleanup, spit some stuff to their own classes, some functions can be simplified
 
 CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWindow& inWindow)
     : Device(inDevice)
@@ -52,7 +54,8 @@ CVERenderer::~CVERenderer()
     UniformBuffersMemory.clear();
     UniformBuffersMapped.clear();
     
-    vkFreeCommandBuffers(Device.GetLogicalDevice(), Device.GetCommandPool(), static_cast<uint32_t>(CommandBuffers.size()), CommandBuffers.data());
+    vkFreeCommandBuffers(Device.GetLogicalDevice(), Device.GetCommandPool(),
+        static_cast<uint32_t>(CommandBuffers.size()), CommandBuffers.data());
     CommandBuffers.clear();
 }
 
@@ -287,12 +290,22 @@ void CVERenderer::CreateGraphicsPipeline()
         throw std::runtime_error("Failed to create pipeline layout!");
     }
     
+    VkPipelineDepthStencilStateCreateInfo depthStencilState{};
+    depthStencilState.depthTestEnable       = VK_TRUE;
+    depthStencilState.depthWriteEnable      = VK_TRUE;
+    depthStencilState.depthCompareOp        = VK_COMPARE_OP_LESS;
+    depthStencilState.depthBoundsTestEnable = VK_FALSE;
+    depthStencilState.stencilTestEnable     = VK_FALSE;
+    
     VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
     pipelineRenderingCreateInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     pipelineRenderingCreateInfo.colorAttachmentCount = 1;
     
     VkFormat colorFormat = SwapChain.GetSurfaceFormat().format;
     pipelineRenderingCreateInfo.pColorAttachmentFormats = &colorFormat;
+    
+    VkFormat depthFormat = SwapChain.GetDepthFormat();
+    pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -308,8 +321,10 @@ void CVERenderer::CreateGraphicsPipeline()
     pipelineCreateInfo.pDynamicState       = &dynamicState;
     pipelineCreateInfo.layout              = PipelineLayout;
     pipelineCreateInfo.renderPass          = VK_NULL_HANDLE;
+    pipelineCreateInfo.pDepthStencilState  = &depthStencilState;
     
-    if (vkCreateGraphicsPipelines(Device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &GraphicsPipeline) != VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(Device.GetLogicalDevice(), VK_NULL_HANDLE, 1,
+        &pipelineCreateInfo, nullptr, &GraphicsPipeline) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create graphics pipeline!");
     }
@@ -466,7 +481,8 @@ void CVERenderer::CreateDescriptorSets()
         descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[1].pImageInfo      = &imageInfo;
         
-        vkUpdateDescriptorSets(Device.GetLogicalDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(Device.GetLogicalDevice(), descriptorWrites.size(),
+            descriptorWrites.data(), 0, nullptr);
     }
 }
 
@@ -499,13 +515,23 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
         throw std::runtime_error("Failed to begin command buffer record!");
     }
     
-    TransitionImageLayout(imageIndex,
+    TransitionImageLayout(SwapChain.GetSwapChainImages()[imageIndex],
                           VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                           0,
                           VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_IMAGE_ASPECT_COLOR_BIT);
+    
+    TransitionImageLayout(SwapChain.GetDepthImage(),
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          VK_IMAGE_ASPECT_DEPTH_BIT);
     
     VkClearValue clearColor{};
     clearColor.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
@@ -521,6 +547,9 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     attachmentInfo.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
     attachmentInfo.clearValue  = clearColor;
     
+    VkRenderingAttachmentInfo depthAttachmentInfo{};
+    SwapChain.GetDepthAttachmentInfo(depthAttachmentInfo);
+    
     const VkExtent2D& SwapChainExtent = SwapChain.GetExtent();
     
     VkRenderingInfo renderingInfo{};
@@ -530,6 +559,7 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     renderingInfo.layerCount           = 1;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments    = &attachmentInfo;
+    renderingInfo.pDepthAttachment     = &depthAttachmentInfo;
     
     vkCmdBeginRendering(CurrentCommandBuffer, &renderingInfo);
     vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline);
@@ -571,13 +601,14 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
 
     vkCmdEndRendering(CurrentCommandBuffer);
 
-    TransitionImageLayout(imageIndex,
+    TransitionImageLayout(SwapChain.GetSwapChainImages()[imageIndex],
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                           VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                           VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                           0,
                           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+                          VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                          VK_IMAGE_ASPECT_COLOR_BIT);
     
     if (vkEndCommandBuffer(CurrentCommandBuffer) != VK_SUCCESS)
     {
@@ -585,12 +616,11 @@ void CVERenderer::RecordCommandBuffer(const uint32_t imageIndex)
     }
 }
 
-void CVERenderer::TransitionImageLayout(uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
+void CVERenderer::TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
                                         VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask,
-                                        VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask)
+                                        VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+                                        VkImageAspectFlagBits aspectMask)
 {
-    const std::vector<VkImage>& swapChainImages = SwapChain.GetSwapChainImages();
-    
     VkImageMemoryBarrier2 barrier{};
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     barrier.srcStageMask                    = srcStageMask;
@@ -601,8 +631,8 @@ void CVERenderer::TransitionImageLayout(uint32_t imageIndex, VkImageLayout oldLa
     barrier.newLayout                       = newLayout;
     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = swapChainImages[imageIndex];
-    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.image                           = image;
+    barrier.subresourceRange.aspectMask     = aspectMask;
     barrier.subresourceRange.baseMipLevel   = 0;
     barrier.subresourceRange.levelCount     = 1;
     barrier.subresourceRange.baseArrayLayer = 0;

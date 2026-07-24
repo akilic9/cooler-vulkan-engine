@@ -14,32 +14,12 @@ CVESwapChain::CVESwapChain(CVEDevice& device, const std::array<int, 2>& windowEx
     CreateSwapChain(windowExtent);
     CreateImageViews();
     CreateSyncObjects();
+    CreateDepthResources();
 }
 
 CVESwapChain::~CVESwapChain()
 {
-    for (const VkImageView& imageView : SwapChainImageViews)
-    {
-        vkDestroyImageView(Device.GetLogicalDevice(), imageView, nullptr);
-    }
-    SwapChainImageViews.clear();
-    
-    if (SwapChain != nullptr)
-    {
-        vkDestroySwapchainKHR(Device.GetLogicalDevice(), SwapChain, nullptr);
-        SwapChain = nullptr;
-    }
-    
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        vkDestroySemaphore(Device.GetLogicalDevice(), PresentCompleteSemaphores[i], nullptr);
-        vkDestroyFence(Device.GetLogicalDevice(), InFlightFences[i], nullptr);
-    }
-    
-    for (const VkSemaphore& semaphore : RenderFinishedSemaphores)
-    {
-        vkDestroySemaphore(Device.GetLogicalDevice(), semaphore, nullptr);
-    }
+    CleanUp(true);
 }
 
 void CVESwapChain::CreateSwapChain(const std::array<int, 2>& windowExtent)
@@ -87,6 +67,7 @@ void CVESwapChain::RecreateSwapChain(const std::array<int, 2>& windowExtent)
     CleanUp();
     CreateSwapChain(windowExtent);
     CreateImageViews();
+    CreateDepthResources();
 }
 
 const VkSurfaceFormatKHR& CVESwapChain::GetSurfaceFormat() const
@@ -166,6 +147,29 @@ VkResult CVESwapChain::SubmitCommandBuffer(VkCommandBuffer commandBuffer, const 
     return vkQueuePresentKHR(Device.GetGraphicsQueue(), &presentInfoKHR);
 }
 
+void CVESwapChain::GetDepthAttachmentInfo(VkRenderingAttachmentInfo& outAttachmentInfo)
+{
+    VkClearValue clearDepth{};
+    clearDepth.depthStencil = {1.0f, 0};
+    
+    outAttachmentInfo.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    outAttachmentInfo.imageView   = DepthImageView;
+    outAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    outAttachmentInfo.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    outAttachmentInfo.storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    outAttachmentInfo.clearValue  = clearDepth;
+}
+
+VkImage CVESwapChain::GetDepthImage() const
+{
+    return DepthImage;
+}
+
+VkFormat CVESwapChain::GetDepthFormat()
+{
+    return DepthFormat;
+}
+
 VkExtent2D CVESwapChain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, std::array<int, 2> windowExtent)
 {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -242,10 +246,7 @@ void CVESwapChain::CreateImageViews()
     for (size_t i = 0; i < SwapChainImages.size(); i++)
     {
         imageViewCreateInfo.image = SwapChainImages[i];
-        if (vkCreateImageView(Device.GetLogicalDevice(), &imageViewCreateInfo, nullptr, &SwapChainImageViews[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create texture image view!");
-        }
+        Device.CreateImageViewFromInfo(imageViewCreateInfo, SwapChainImageViews[i]);
     }
 }
 
@@ -284,11 +285,101 @@ void CVESwapChain::CreateSyncObjects()
     }
 }
 
-void CVESwapChain::CleanUp()
+void CVESwapChain::CreateDepthResources()
+{
+    FindDepthFormat();
+    
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType   = VK_IMAGE_TYPE_2D;
+    imageInfo.format      = DepthFormat;
+    imageInfo.extent      = {Extent.width, Extent.height, 1};
+    imageInfo.mipLevels   = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples     = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    
+    Device.CreateImageFromInfo(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DepthImage, DepthImageMemory);
+    
+    VkImageViewCreateInfo createInfo{};
+    createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfo.image    = DepthImage;
+    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    createInfo.format   = DepthFormat;
+    createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    createInfo.subresourceRange.baseMipLevel   = 0;
+    createInfo.subresourceRange.levelCount     = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount     = 1;
+    
+    Device.CreateImageViewFromInfo(createInfo, DepthImageView);
+}
+
+void CVESwapChain::FindDepthFormat()
+{
+    std::vector<VkFormat> formats = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+    VkFormatFeatureFlagBits feature = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    
+    for (VkFormat format : formats)
+    {
+        VkFormatProperties properties{};
+        Device.GetDeviceFormatProperties(format, properties);
+        
+        if ((properties.optimalTilingFeatures & feature) == feature)
+        {
+            DepthFormat = format;
+            return;
+        }
+    }
+    throw std::runtime_error("Failed to find supported depth format!");
+}
+
+void CVESwapChain::DestroyImageViews()
 {
     for (const VkImageView& imageView : SwapChainImageViews)
     {
         vkDestroyImageView(Device.GetLogicalDevice(), imageView, nullptr);
     }
     SwapChainImageViews.clear();
+}
+
+void CVESwapChain::DestroyDepthResources()
+{
+    vkDestroyImageView(Device.GetLogicalDevice(), DepthImageView, nullptr);
+    vkDestroyImage(Device.GetLogicalDevice(), DepthImage, nullptr);
+    vkFreeMemory(Device.GetLogicalDevice(), DepthImageMemory, nullptr);
+    
+    DepthImageView = VK_NULL_HANDLE;
+    DepthImage = VK_NULL_HANDLE;
+    DepthImageMemory = VK_NULL_HANDLE;
+}
+
+void CVESwapChain::CleanUp(bool bDestruction)
+{
+    DestroyDepthResources();
+    DestroyImageViews();
+    
+    if (!bDestruction)
+    {
+        return;
+    }
+    
+    if (SwapChain != nullptr)
+    {
+        vkDestroySwapchainKHR(Device.GetLogicalDevice(), SwapChain, nullptr);
+        SwapChain = nullptr;
+    }
+    
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroySemaphore(Device.GetLogicalDevice(), PresentCompleteSemaphores[i], nullptr);
+        vkDestroyFence(Device.GetLogicalDevice(), InFlightFences[i], nullptr);
+    }
+    
+    for (const VkSemaphore& semaphore : RenderFinishedSemaphores)
+    {
+        vkDestroySemaphore(Device.GetLogicalDevice(), semaphore, nullptr);
+    }
 }

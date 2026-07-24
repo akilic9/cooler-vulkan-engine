@@ -14,7 +14,7 @@ class CVEDevice;
 struct CVEVertex
 {
     glm::vec3 Position;
-    glm::vec3 Colour;
+    glm::vec4 Colour;
     glm::vec3 Normal;
     glm::vec2 TexCoord0;
     
@@ -73,13 +73,14 @@ private:
     void CreateDescriptorSets();
     void CreateCommandBuffers();
     void RecordCommandBuffer(const uint32_t imageIndex);
-    void TransitionImageLayout(uint32_t              imageIndex,
+    void TransitionImageLayout(VkImage               image,
                                VkImageLayout         oldLayout,
                                VkImageLayout         newLayout,
                                VkAccessFlags2        srcAccessMask,
                                VkAccessFlags2        dstAccessMask,
                                VkPipelineStageFlags2 srcStageMask,
-                               VkPipelineStageFlags2 dstStageMask);
+                               VkPipelineStageFlags2 dstStageMask,
+                               VkImageAspectFlagBits aspectMask);
     
     
     void UpdateUniformBuffer(uint32_t currentFrameIndex);
@@ -108,12 +109,18 @@ private:
     uint32_t CurrentFrameIndex = 0;
     
     const std::vector<CVEVertex> Vertices {
-    {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
+        {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+        {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+        {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+        {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+        
+        {{-0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+        {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+        {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+        {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
     
-    const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0};
+    const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0,
+                                        4, 5, 6, 6, 7, 4};
     
     CVETexture Texture;
 };
