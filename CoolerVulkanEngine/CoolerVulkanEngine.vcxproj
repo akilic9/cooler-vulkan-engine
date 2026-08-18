@@ -104,14 +104,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;$(SolutionDir)Includes\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;$(SolutionDir)Libraries\assimp;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -122,14 +122,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Includes\Vulkan-1.4.350.0;$(SolutionDir)Includes\glm-1.0.3;$(SolutionDir)Includes\glfw-3.4;$(SolutionDir)Includes\stb_image;$(SolutionDir)Includes\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;$(SolutionDir)Libraries\assimp;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -137,6 +137,8 @@
     <ClCompile Include="CVEApplication.cpp" />
     <ClCompile Include="CVEDevice.cpp" />
     <ClCompile Include="CVEInstanceUtil.cpp" />
+    <ClCompile Include="CVEMesh.cpp" />
+    <ClCompile Include="CVEModel.cpp" />
     <ClCompile Include="CVERenderer.cpp" />
     <ClCompile Include="CVESwapChain.cpp" />
     <ClCompile Include="CVETexture.cpp" />
@@ -146,6 +148,8 @@
     <ClInclude Include="CVEApplication.h" />
     <ClInclude Include="CVEDevice.h" />
     <ClInclude Include="CVEInstanceUtil.h" />
+    <ClInclude Include="CVEMesh.h" />
+    <ClInclude Include="CVEModel.h" />
     <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />
     <ClInclude Include="CVETexture.h" />
