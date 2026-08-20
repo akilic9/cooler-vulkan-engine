@@ -153,6 +153,7 @@
     <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />
     <ClInclude Include="CVETexture.h" />
+    <ClInclude Include="CVETypes.h" />
     <ClInclude Include="CVEWindow.h" />
   </ItemGroup>
   <ItemGroup>

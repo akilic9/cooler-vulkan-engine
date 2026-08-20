@@ -9,6 +9,7 @@
 
 #include "CVEDevice.h"
 #include "CVESwapChain.h"
+#include "CVETypes.h"
 #include "CVEWindow.h"
 
 // TODO : This file need cleanup, spit some stuff to their own classes, some functions can be simplified
@@ -17,12 +18,9 @@ CVERenderer::CVERenderer(CVEDevice& inDevice, CVESwapChain& inSwapChain, CVEWind
     : Device(inDevice)
     , SwapChain(inSwapChain)
     , Window(inWindow)
-    , Texture(Device, "Assets/pikachu.gif")
 {
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
-    CreateVertexBuffer();
-    CreateIndexBuffer();
     CreateUniformBuffers();
     CreateDescriptorPool();
     CreateDescriptorSets();
@@ -36,12 +34,6 @@ CVERenderer::~CVERenderer()
     vkDestroyDescriptorSetLayout(Device.GetLogicalDevice(), DescriptorSetLayout, nullptr);
     vkDestroyDescriptorPool(Device.GetLogicalDevice(), DescriptorPool, nullptr);    
     DescriptorSets.clear();
-
-    vkDestroyBuffer(Device.GetLogicalDevice(), VertexBuffer, nullptr);
-    vkFreeMemory(Device.GetLogicalDevice(), VertexBufferMemory, nullptr);
-
-    vkDestroyBuffer(Device.GetLogicalDevice(), IndexBuffer, nullptr);
-    vkFreeMemory(Device.GetLogicalDevice(), IndexBufferMemory, nullptr);
 
     for (size_t i = 0; i < UniformBuffers.size(); i++)
     {
@@ -347,55 +339,6 @@ void CVERenderer::CreateShaderModule(const std::vector<char>& shaderCode, VkShad
     {
         std::cout << "Failed to create shader module!" << std::endl;
     }
-}
-
-// TODO: function for vertex and index are similar, unify
-void CVERenderer::CreateVertexBuffer()
-{
-    VkDeviceSize bufferSize = sizeof(Vertices[0]) * Vertices.size();
-    
-    VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;    
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    
-    Device.CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, stagingBuffer, stagingBufferMemory);
-    
-    void* data;
-    vkMapMemory(Device.GetLogicalDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, Vertices.data(), bufferSize);
-    vkUnmapMemory(Device.GetLogicalDevice(), stagingBufferMemory);
-    
-    VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    Device.CreateBuffer(bufferSize, usageFlags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VertexBuffer, VertexBufferMemory);
-
-    Device.CopyBuffer(stagingBuffer, VertexBuffer, bufferSize);
-    
-    vkDestroyBuffer(Device.GetLogicalDevice(), stagingBuffer, nullptr);
-    vkFreeMemory(Device.GetLogicalDevice(), stagingBufferMemory, nullptr);
-}
-
-void CVERenderer::CreateIndexBuffer()
-{
-    VkDeviceSize bufferSize = sizeof(Indices[0]) * Indices.size();
-    
-    VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    
-    Device.CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, stagingBuffer, stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(Device.GetLogicalDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, Indices.data(), bufferSize);
-    vkUnmapMemory(Device.GetLogicalDevice(), stagingBufferMemory);
-
-    VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    Device.CreateBuffer(bufferSize, usageFlags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, IndexBuffer, IndexBufferMemory);
-
-    Device.CopyBuffer(stagingBuffer, IndexBuffer, bufferSize);
-    
-    vkDestroyBuffer(Device.GetLogicalDevice(), stagingBuffer, nullptr);
-    vkFreeMemory(Device.GetLogicalDevice(), stagingBufferMemory, nullptr);
 }
 
 void CVERenderer::CreateUniformBuffers()

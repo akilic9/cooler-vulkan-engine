@@ -35,8 +35,6 @@ private:
     void CreateGraphicsPipeline();
     void CreateShaderModule(const std::vector<char>& shaderCode, VkShaderModule* shaderModule) const;
     
-    void CreateVertexBuffer();
-    void CreateIndexBuffer();
     void CreateUniformBuffers();
     void CreateDescriptorPool();
     void CreateDescriptorSets();
@@ -69,15 +67,11 @@ private:
     std::vector<VkDeviceMemory> UniformBuffersMemory;
     std::vector<void *> UniformBuffersMapped;
     
-    VkBuffer VertexBuffer;
-    VkDeviceMemory VertexBufferMemory;
-    VkBuffer IndexBuffer;
-    VkDeviceMemory IndexBufferMemory;
     std::vector<VkCommandBuffer> CommandBuffers;
     
     uint32_t CurrentFrameIndex = 0;
     
-    const std::vector<CVEVertex> Vertices {
+    /*const std::vector<CVEVertex> Vertices {
         {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
         {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
         {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
@@ -91,5 +85,5 @@ private:
     const std::vector<uint16_t> Indices{0, 1, 2, 2, 3, 0,
                                         4, 5, 6, 6, 7, 4};
     
-    CVETexture Texture;
+    CVETexture Texture;*/
 };
