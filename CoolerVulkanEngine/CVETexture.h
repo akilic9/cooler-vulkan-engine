@@ -11,9 +11,12 @@ public:
     CVETexture(CVEDevice& device, const std::string& filePath);
     ~CVETexture();
     
-    VkDescriptorImageInfo GetDescriptorImageInfo();
+    VkDescriptorImageInfo GetDescriptorImageInfo() const;
+    
+    const std::string& GetFilePath() const;
+    
 private:
-    void CreateTexture(const std::string& filePath);
+    void CreateTexture();
     void CreateImage(uint32_t              width,
                      uint32_t              height,
                      VkFormat              format,
@@ -26,10 +29,14 @@ private:
                                VkImage         image,
                                VkImageLayout   oldLayout,
                                VkImageLayout   newLayout);
+    void CreateDescriptorImageInfo();
     
     CVEDevice& Device;
     VkImage TextureImage;
     VkDeviceMemory TextureImageMemory;
     VkImageView TextureImageView;
     VkSampler TextureSampler;
+    VkDescriptorImageInfo DescriptorImageInfo{};
+    
+    const std::string FilePath;
 };

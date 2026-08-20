@@ -8,8 +8,9 @@
 
 CVETexture::CVETexture(CVEDevice& device, const std::string& filePath)
     : Device(device)
+    , FilePath(filePath)
 {
-    CreateTexture(filePath);
+    CreateTexture();
     CreateImageView();
     CreateSampler();
 }
@@ -22,19 +23,20 @@ CVETexture::~CVETexture()
     vkDestroySampler(Device.GetLogicalDevice(), TextureSampler, nullptr);
 }
 
-VkDescriptorImageInfo CVETexture::GetDescriptorImageInfo()
+VkDescriptorImageInfo CVETexture::GetDescriptorImageInfo() const
 {
-    VkDescriptorImageInfo descriptorImageInfo{};
-    descriptorImageInfo.sampler     = TextureSampler;
-    descriptorImageInfo.imageView   = TextureImageView;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    return descriptorImageInfo;
+    return DescriptorImageInfo;
 }
 
-void CVETexture::CreateTexture(const std::string& filePath)
+const std::string& CVETexture::GetFilePath() const
+{
+    return FilePath;
+}
+
+void CVETexture::CreateTexture()
 {
     int texWidth, texHeight, texChannels;
-    stbi_uc *pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc *pixels = stbi_load(FilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
@@ -66,6 +68,8 @@ void CVETexture::CreateTexture(const std::string& filePath)
     
     vkDestroyBuffer(Device.GetLogicalDevice(), stagingBuffer, nullptr);
     vkFreeMemory(Device.GetLogicalDevice(), stagingBufferMemory, nullptr);
+    
+    CreateDescriptorImageInfo();
 }
 
 void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
@@ -177,4 +181,11 @@ void CVETexture::TransitionImageLayout(VkCommandBuffer commandBuffer,
                          0, nullptr,
                          0, nullptr,
                          1, &barrier);
+}
+
+void CVETexture::CreateDescriptorImageInfo()
+{
+    DescriptorImageInfo.sampler     = TextureSampler;
+    DescriptorImageInfo.imageView   = TextureImageView;
+    DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }

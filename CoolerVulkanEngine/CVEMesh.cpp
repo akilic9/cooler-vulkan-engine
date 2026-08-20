@@ -1,10 +1,13 @@
 #include "CVEMesh.h"
 
 #include "CVEDevice.h"
+#include "CVEModel.h"
+#include "CVETexture.h"
 #include "CVETypes.h"
 
-CVEMesh::CVEMesh(CVEDevice& device, aiMesh* mesh, const aiScene* scene)
+CVEMesh::CVEMesh(CVEDevice& device, CVEModel* Owner, aiMesh* mesh, const aiScene* scene)
     : Device(device)
+    , OwnerModel(Owner)
 {
     ProcessMesh(mesh, scene);
 }
@@ -27,9 +30,11 @@ void CVEMesh::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     std::vector<uint32_t> indices;
     FillIndices(indices, mesh);
     CreateIndexBuffer(indices);
+    
+    LoadTextures(mesh, scene);
 }
 
-void CVEMesh::FillVertices(std::vector<CVEVertex>& outVertices, aiMesh* mesh)
+void CVEMesh::FillVertices(std::vector<CVEVertex>& outVertices, const aiMesh* mesh)
 {
     for (uint32_t i = 0; i < mesh->mNumVertices; i++)
     {
@@ -57,7 +62,7 @@ void CVEMesh::FillVertices(std::vector<CVEVertex>& outVertices, aiMesh* mesh)
     }
 }
 
-void CVEMesh::FillIndices(std::vector<uint32_t>& outIndices, aiMesh* mesh)
+void CVEMesh::FillIndices(std::vector<uint32_t>& outIndices, const aiMesh* mesh)
 {
     for (uint32_t i = 0; i < mesh->mNumFaces; i++)
     {
@@ -66,6 +71,44 @@ void CVEMesh::FillIndices(std::vector<uint32_t>& outIndices, aiMesh* mesh)
         {
             outIndices.push_back(face.mIndices[j]);
         }
+    }
+}
+
+void CVEMesh::LoadTextures(const aiMesh* mesh, const aiScene* scene)
+{
+    aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+    
+    for (uint32_t i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++)
+    {
+        aiString fileName;
+        material->GetTexture(aiTextureType_DIFFUSE, i, &fileName);
+        
+        bool bAlreadyLoaded = false;
+        for (const CVETexture& loadedTexture : OwnerModel->GetLoadedTextures())
+        {
+            // is it already loaded?
+            if (loadedTexture.GetFilePath().compare(fileName.C_Str()) == 0)
+            {
+                Textures.push_back(loadedTexture);
+                bAlreadyLoaded = true;
+            }
+        }
+        
+        if (bAlreadyLoaded)
+        {
+            continue;
+        }
+        
+        if (const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.C_Str()))
+        {
+            //how to load embedded texture?
+            continue;
+        }
+        
+        std::string path = OwnerModel->GetFilePath() + "/" + fileName.C_Str();
+        CVETexture newTexture(Device, path);
+        Textures.push_back(newTexture);
+        OwnerModel->AddLoadedTexture(newTexture);        
     }
 }
 
@@ -118,10 +161,6 @@ void CVEMesh::CreateIndexBuffer(const std::vector<uint32_t>& indices)
     vkFreeMemory(Device.GetLogicalDevice(), stagingBufferMemory, nullptr);
 }
 
-void CVEMesh::BindBuffers()
-{
-}
-
-void CVEMesh::Draw()
+void CVEMesh::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
 {
 }

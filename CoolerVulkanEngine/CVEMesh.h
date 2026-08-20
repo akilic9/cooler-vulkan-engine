@@ -4,6 +4,7 @@
 #include <vulkan/vulkan_core.h>
 #include <glm.hpp>
 
+class CVEModel;
 struct CVEVertex;
 class CVETexture;
 class CVEDevice;
@@ -11,19 +12,21 @@ class CVEDevice;
 class CVEMesh
 {
 public:
-    CVEMesh(CVEDevice& device, aiMesh* mesh, const aiScene* scene);
+    CVEMesh(CVEDevice& device, CVEModel* Owner, aiMesh* mesh, const aiScene* scene);
     ~CVEMesh();
+    
+    void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
     
 private:
     void ProcessMesh(aiMesh* mesh, const aiScene* scene);
-    void FillVertices(std::vector<CVEVertex>& outVertices, aiMesh* mesh);
-    void FillIndices(std::vector<uint32_t>& outIndices, aiMesh* mesh);
+    void FillVertices(std::vector<CVEVertex>& outVertices, const aiMesh* mesh);
+    void FillIndices(std::vector<uint32_t>& outIndices, const aiMesh* mesh);
+    void LoadTextures(const aiMesh* mesh, const aiScene* scene);
     void CreateVertexBuffer(const std::vector<CVEVertex>& vertices);
     void CreateIndexBuffer(const std::vector<uint32_t>& indices);
-    void BindBuffers();
-    void Draw();
     
     CVEDevice& Device;
+    CVEModel* OwnerModel;
     
     VkBuffer VertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory VertexBufferMemory = VK_NULL_HANDLE;
