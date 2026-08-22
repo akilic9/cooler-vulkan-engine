@@ -2,17 +2,52 @@
 
 #include <stdexcept>
 #define STB_IMAGE_IMPLEMENTATION
+#include <iostream>
 #include <stb_image.h>
+#include <assimp/texture.h>
 
 #include "CVEDevice.h"
 
-CVETexture::CVETexture(CVEDevice& device, const std::string& filePath)
+CVETexture::CVETexture(CVEDevice& device, const std::string& filePath, unsigned char* pixels, int width, int height)
     : Device(device)
     , FilePath(filePath)
 {
-    CreateTexture();
-    CreateImageView();
-    CreateSampler();
+    if (!pixels)
+    {
+        std::cerr << "Could not load texture from: " << FilePath << std::endl;
+        return;
+    }
+        
+    CreateTexture(pixels, width, height);
+    stbi_image_free(pixels);
+}
+
+CVETexture::CVETexture(CVEDevice& device, const std::string& filePath, void* data, int width, int height, VkFormat format)
+    : Device(device)
+    , FilePath(filePath)
+{    
+    CreateTexture(static_cast<unsigned char*>(data), width, height, VK_FORMAT_B8G8R8A8_SRGB);
+}
+
+std::shared_ptr<CVETexture> CVETexture::LoadTexture(CVEDevice& device, const std::string& filePath)
+{
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    return std::make_shared<CVETexture>(device, filePath, pixels, texWidth, texHeight);
+}
+
+std::shared_ptr<CVETexture> CVETexture::LoadTexture(CVEDevice& device, const std::string& filePath, const aiTexture* embeddedTexture)
+{
+    void* data = embeddedTexture->pcData;
+    
+    if (embeddedTexture->mHeight == 0)
+    {
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load_from_memory(static_cast<const stbi_uc*>(data), embeddedTexture->mWidth, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        return std::make_shared<CVETexture>(device, filePath, pixels, texWidth, texHeight);
+    }
+    
+    return std::make_shared<CVETexture>(device, filePath, data, embeddedTexture->mWidth, embeddedTexture->mHeight, VK_FORMAT_B8G8R8A8_SRGB);
 }
 
 CVETexture::~CVETexture()
@@ -23,53 +58,47 @@ CVETexture::~CVETexture()
     vkDestroySampler(Device.GetLogicalDevice(), TextureSampler, nullptr);
 }
 
-VkDescriptorImageInfo CVETexture::GetDescriptorImageInfo() const
+void CVETexture::CreateTexture(unsigned char* pixels, int width, int height, VkFormat format)
 {
-    return DescriptorImageInfo;
-}
-
-const std::string& CVETexture::GetFilePath() const
-{
-    return FilePath;
-}
-
-void CVETexture::CreateTexture()
-{
-    int texWidth, texHeight, texChannels;
-    stbi_uc *pixels = stbi_load(FilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-    if (!pixels)
-    {
-        throw std::runtime_error("Failed to load texture image!");
-    }
-    
-    VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
+    WriteToStagingBuffer(pixels, width, height, stagingBuffer, stagingBufferMemory);
+    CopyBuffer(stagingBuffer, width, height, format);
+    DestroyStagingBuffer(stagingBuffer, stagingBufferMemory);
     
-    Device.CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, stagingBuffer, stagingBufferMemory);
+    CreateImageView(format);
+    CreateSampler();
+    CreateDescriptorImageInfo();
+}
+
+void CVETexture::WriteToStagingBuffer(const unsigned char* pixels, int width, int height, VkBuffer& outBuffer, VkDeviceMemory& outBufferMemory)
+{
+    VkDeviceSize imageSize = width * height * 4;
+    VkMemoryPropertyFlags propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    Device.CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, propertyFlags, outBuffer, outBufferMemory);
     
     void* data;
-    vkMapMemory(Device.GetLogicalDevice(), stagingBufferMemory, 0, imageSize, 0, &data);
+    vkMapMemory(Device.GetLogicalDevice(), outBufferMemory, 0, imageSize, 0, &data);
     memcpy(data, pixels, imageSize);
-    vkUnmapMemory(Device.GetLogicalDevice(), stagingBufferMemory);
-    
-    stbi_image_free(pixels);
-    
+    vkUnmapMemory(Device.GetLogicalDevice(), outBufferMemory);
+}
+
+void CVETexture::CopyBuffer(const VkBuffer& stagingBuffer, int imgWidht, int imgHeight, VkFormat format)
+{
     VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, imageUsageFlags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImage(imgWidht, imgHeight, format, VK_IMAGE_TILING_OPTIMAL, imageUsageFlags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     VkCommandBuffer commandBuffer = Device.BeginSingleTimeCommands();
     TransitionImageLayout(commandBuffer, TextureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    Device.CopyBufferToImage(commandBuffer, stagingBuffer, TextureImage, texWidth, texHeight);
+    Device.CopyBufferToImage(commandBuffer, stagingBuffer, TextureImage, imgWidht, imgHeight);
     TransitionImageLayout(commandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     Device.EndSingleTimeCommands(commandBuffer);
-    
+}
+
+void CVETexture::DestroyStagingBuffer(const VkBuffer& stagingBuffer, const VkDeviceMemory& stagingBufferMemory) const
+{
     vkDestroyBuffer(Device.GetLogicalDevice(), stagingBuffer, nullptr);
     vkFreeMemory(Device.GetLogicalDevice(), stagingBufferMemory, nullptr);
-    
-    CreateDescriptorImageInfo();
 }
 
 void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
@@ -89,13 +118,13 @@ void CVETexture::CreateImage(uint32_t width, uint32_t height, VkFormat format, V
     Device.CreateImageFromInfo(imageInfo, properties, TextureImage, TextureImageMemory);
 }
 
-void CVETexture::CreateImageView()
+void CVETexture::CreateImageView(VkFormat format)
 {
     VkImageViewCreateInfo createInfo{};
     createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfo.image    = TextureImage;
     createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format   = VK_FORMAT_R8G8B8A8_SRGB;
+    createInfo.format   = format;
     createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     createInfo.subresourceRange.baseMipLevel   = 0;
     createInfo.subresourceRange.levelCount     = 1;
@@ -132,6 +161,13 @@ void CVETexture::CreateSampler()
     {
         throw std::runtime_error("Failed to create sampler!");
     }
+}
+
+void CVETexture::CreateDescriptorImageInfo()
+{
+    DescriptorImageInfo.sampler     = TextureSampler;
+    DescriptorImageInfo.imageView   = TextureImageView;
+    DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 void CVETexture::TransitionImageLayout(VkCommandBuffer commandBuffer,
@@ -183,9 +219,12 @@ void CVETexture::TransitionImageLayout(VkCommandBuffer commandBuffer,
                          1, &barrier);
 }
 
-void CVETexture::CreateDescriptorImageInfo()
+VkDescriptorImageInfo CVETexture::GetDescriptorImageInfo() const
 {
-    DescriptorImageInfo.sampler     = TextureSampler;
-    DescriptorImageInfo.imageView   = TextureImageView;
-    DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    return DescriptorImageInfo;
+}
+
+const std::string& CVETexture::GetFilePath() const
+{
+    return FilePath;
 }

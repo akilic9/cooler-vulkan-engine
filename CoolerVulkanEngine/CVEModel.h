@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <string>
@@ -15,21 +16,26 @@ public:
     CVEModel(CVEDevice& device, const std::string& filePath);
     ~CVEModel();
     
-    void LoadModel();
-    void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
-    void AddLoadedTexture(const CVETexture& texture);
+    CVEModel(const CVEModel&) = delete;
+    CVEModel& operator=(const CVEModel&) = delete;
+    CVEModel(CVEModel&&) = delete;
+    CVEModel& operator=(CVEModel&&) = delete;
     
-    const std::vector<CVETexture>& GetLoadedTextures() const;
-    const std::string& GetFilePath() const;
+    void LoadModel(const std::string& filePath);
+    void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+    uint16_t AddLoadedTexture(const std::shared_ptr<CVETexture>& texture);
+    
+    const std::vector<std::shared_ptr<CVETexture>>& GetLoadedTextures() const;
+    const std::string& GetFileDirectory() const;
     
 private:
     void ProcessNode(aiNode* node, const aiScene* scene);
     
     CVEDevice& Device;
     
-    const std::string FilePath;
+    std::string FileDirectory;
     
     std::vector<CVEMesh> Meshes;
     
-    std::vector<CVETexture> LoadedTextures;
+    std::vector<std::shared_ptr<CVETexture>> LoadedTextures;
 };

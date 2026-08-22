@@ -12,8 +12,13 @@ class CVEDevice;
 class CVEMesh
 {
 public:
-    CVEMesh(CVEDevice& device, CVEModel* Owner, aiMesh* mesh, const aiScene* scene);
+    CVEMesh(CVEDevice& device, CVEModel* owner, aiMesh* mesh, const aiScene* scene);
     ~CVEMesh();
+    
+    CVEMesh(const CVEMesh&) = delete;
+    CVEMesh& operator=(const CVEMesh&) = delete;
+    CVEMesh(CVEMesh&&) = delete;
+    CVEMesh& operator=(CVEMesh&&) = delete;
     
     void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
     
@@ -22,6 +27,7 @@ private:
     void FillVertices(std::vector<CVEVertex>& outVertices, const aiMesh* mesh);
     void FillIndices(std::vector<uint32_t>& outIndices, const aiMesh* mesh);
     void LoadTextures(const aiMesh* mesh, const aiScene* scene);
+    bool CheckTextureLoaded(const std::string& fileName);
     void CreateVertexBuffer(const std::vector<CVEVertex>& vertices);
     void CreateIndexBuffer(const std::vector<uint32_t>& indices);
     
@@ -33,7 +39,7 @@ private:
     VkBuffer IndexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory IndexBufferMemory = VK_NULL_HANDLE;
     
-    std::vector<CVETexture> Textures;
+    std::vector<uint32_t> TextureIndices;
     
     uint32_t IndexCount = 0;
     uint32_t VertexCount = 0;

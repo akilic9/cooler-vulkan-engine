@@ -5,9 +5,9 @@
 #include "CVETexture.h"
 #include "CVETypes.h"
 
-CVEMesh::CVEMesh(CVEDevice& device, CVEModel* Owner, aiMesh* mesh, const aiScene* scene)
+CVEMesh::CVEMesh(CVEDevice& device, CVEModel* owner, aiMesh* mesh, const aiScene* scene)
     : Device(device)
-    , OwnerModel(Owner)
+    , OwnerModel(owner)
 {
     ProcessMesh(mesh, scene);
 }
@@ -44,8 +44,12 @@ void CVEMesh::FillVertices(std::vector<CVEVertex>& outVertices, const aiMesh* me
                 
         if (mesh->HasVertexColors(0))
         {
-            const aiColor4D& colour = *mesh->mColors[0];
+            const aiColor4D& colour = mesh->mColors[0][i];
             vertex.Colour = glm::vec4(colour.r, colour.g, colour.b, colour.a);
+        }
+        else
+        {
+            vertex.Colour = glm::vec4(1.0f);
         }
         
         if (mesh->HasNormals())
@@ -83,33 +87,40 @@ void CVEMesh::LoadTextures(const aiMesh* mesh, const aiScene* scene)
         aiString fileName;
         material->GetTexture(aiTextureType_DIFFUSE, i, &fileName);
         
-        bool bAlreadyLoaded = false;
-        for (const CVETexture& loadedTexture : OwnerModel->GetLoadedTextures())
-        {
-            // is it already loaded?
-            if (loadedTexture.GetFilePath().compare(fileName.C_Str()) == 0)
-            {
-                Textures.push_back(loadedTexture);
-                bAlreadyLoaded = true;
-            }
-        }
-        
-        if (bAlreadyLoaded)
+        if (CheckTextureLoaded(fileName.C_Str()))
         {
             continue;
         }
         
+        std::string path = OwnerModel->GetFileDirectory() + fileName.C_Str();
+        std::shared_ptr<CVETexture> newTexture;
         if (const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.C_Str()))
         {
-            //how to load embedded texture?
-            continue;
+            newTexture = CVETexture::LoadTexture(Device, path, embeddedTexture);
+        }
+        else
+        {
+            newTexture = CVETexture::LoadTexture(Device, path);
         }
         
-        std::string path = OwnerModel->GetFilePath() + "/" + fileName.C_Str();
-        CVETexture newTexture(Device, path);
-        Textures.push_back(newTexture);
-        OwnerModel->AddLoadedTexture(newTexture);        
+        uint16_t textureIndex = OwnerModel->AddLoadedTexture(newTexture);
+        TextureIndices.push_back(textureIndex);
     }
+}
+
+bool CVEMesh::CheckTextureLoaded(const std::string& fileName)
+{ 
+    for (uint32_t i = 0; i < OwnerModel->GetLoadedTextures().size(); i++)
+    {
+        const std::shared_ptr<CVETexture>& loadedTexture = OwnerModel->GetLoadedTextures()[i];
+        if (loadedTexture->GetFilePath().compare(fileName) == 0)
+        {
+            TextureIndices.push_back(i);
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 // TODO: function for vertex and index are similar

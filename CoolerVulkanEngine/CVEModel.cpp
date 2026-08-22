@@ -8,22 +8,23 @@
 
 CVEModel::CVEModel(CVEDevice& device, const std::string& filePath)
     : Device(device)
-    , FilePath(filePath)
 {
+    FileDirectory = filePath.substr(0, filePath.find_last_of("/\\"));
 }
 
 CVEModel::~CVEModel()
 {
 }
 
-void CVEModel::LoadModel()
+void CVEModel::LoadModel(const std::string& filePath)
 {
     Assimp::Importer importer;
-    const aiScene* Scene = importer.ReadFile(FilePath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+    const aiScene* Scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
 
-    if (Scene == nullptr)
+    if (!Scene)
     {
-        std::cerr << "Could not import model from: " << FilePath << std::endl;
+        std::cerr << "Could not import model from: " << filePath << std::endl;
+        return;
     }
 
     ProcessNode(Scene->mRootNode, Scene);
@@ -37,19 +38,21 @@ void CVEModel::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayo
     }
 }
 
-void CVEModel::AddLoadedTexture(const CVETexture& texture)
+uint16_t CVEModel::AddLoadedTexture(const std::shared_ptr<CVETexture>& texture)
 {
+    uint32_t index = (uint16_t)LoadedTextures.size();
     LoadedTextures.push_back(texture);
+    return index;
 }
 
-const std::vector<CVETexture>& CVEModel::GetLoadedTextures() const
+const std::vector<std::shared_ptr<CVETexture>>& CVEModel::GetLoadedTextures() const
 {
     return LoadedTextures;
 }
 
-const std::string& CVEModel::GetFilePath() const
+const std::string& CVEModel::GetFileDirectory() const
 {
-    return FilePath;
+    return FileDirectory;
 }
 
 void CVEModel::ProcessNode(aiNode* node, const aiScene* scene)
