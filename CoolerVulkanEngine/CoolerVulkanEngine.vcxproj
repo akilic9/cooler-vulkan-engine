@@ -136,8 +136,8 @@
     <ClCompile Include="CoolerVulkanEngine.cpp" />
     <ClCompile Include="CVEApplication.cpp" />
     <ClCompile Include="CVEDevice.cpp" />
+    <ClCompile Include="CVEGameObject.cpp" />
     <ClCompile Include="CVEInstanceUtil.cpp" />
-    <ClCompile Include="CVEMesh.cpp" />
     <ClCompile Include="CVEModel.cpp" />
     <ClCompile Include="CVERenderer.cpp" />
     <ClCompile Include="CVESwapChain.cpp" />
@@ -147,8 +147,8 @@
   <ItemGroup>
     <ClInclude Include="CVEApplication.h" />
     <ClInclude Include="CVEDevice.h" />
+    <ClInclude Include="CVEGameObject.h" />
     <ClInclude Include="CVEInstanceUtil.h" />
-    <ClInclude Include="CVEMesh.h" />
     <ClInclude Include="CVEModel.h" />
     <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />

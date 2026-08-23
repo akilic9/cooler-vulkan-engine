@@ -15,6 +15,7 @@ int main()
 		system("PAUSE");
 		return EXIT_FAILURE;
 	}
+	uint32_t aaa;
 
 	return EXIT_SUCCESS;
 }

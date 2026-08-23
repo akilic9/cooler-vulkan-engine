@@ -6,6 +6,8 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+struct CVEModelData;
+struct CVEVertex;
 class CVETexture;
 class CVEMesh;
 class CVEDevice;
@@ -23,19 +25,25 @@ public:
     
     void LoadModel(const std::string& filePath);
     void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
-    uint16_t AddLoadedTexture(const std::shared_ptr<CVETexture>& texture);
-    
-    const std::vector<std::shared_ptr<CVETexture>>& GetLoadedTextures() const;
-    const std::string& GetFileDirectory() const;
     
 private:
-    void ProcessNode(aiNode* node, const aiScene* scene);
+    void ProcessNode(aiNode* node, const aiScene* scene, CVEModelData& modelData);    
+    static void ProcessVertices(std::vector<CVEVertex>& outVertices, const aiMesh* mesh);
+    static void ProcessIndices(std::vector<uint32_t>& outIndices, const aiMesh* mesh);
+    int32_t LoadTexture(const aiMesh* mesh, const aiScene* scene);
+    bool CheckTextureLoaded(const std::string& fileName, int32_t& outTextureIndex);    
     
-    CVEDevice& Device;
+    void CreateVertexBuffer(const std::vector<CVEVertex>& vertices);
+    void CreateIndexBuffer(const std::vector<uint32_t>& indices);
     
-    std::string FileDirectory;
+    CVEDevice& Device;    
+    std::string FileDirectory;    
     
-    std::vector<CVEMesh> Meshes;
+    VkBuffer VertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory VertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer IndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory IndexBufferMemory = VK_NULL_HANDLE;
     
-    std::vector<std::shared_ptr<CVETexture>> LoadedTextures;
+    std::vector<CVEMesh> Meshes;    
+    std::vector<std::shared_ptr<CVETexture>> Textures;
 };
