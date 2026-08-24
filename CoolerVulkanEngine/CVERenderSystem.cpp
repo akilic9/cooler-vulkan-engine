@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 
-
 #include "CVEDevice.h"
 #include "CVEPipeline.h"
 #include "CVESwapChain.h"
@@ -13,6 +12,7 @@ CVERenderSystem::CVERenderSystem(CVEDevice& device, CVESwapChain& swapChain)
     , SwapChain(swapChain)
 {
     Init();
+    // load models here
 }
 
 CVERenderSystem::~CVERenderSystem()
@@ -53,21 +53,7 @@ void CVERenderSystem::Render(VkCommandBuffer commandBuffer)
 {
     Pipeline->Bind(commandBuffer);
     
-    /*VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(CurrentCommandBuffer, 0, 1, &VertexBuffer, offsets);
-
-    vkCmdBindIndexBuffer(CurrentCommandBuffer, IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-    vkCmdBindDescriptorSets(CurrentCommandBuffer,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            PipelineLayout,
-                            0,
-                            1, 
-                            &DescriptorSets[CurrentFrameIndex], 
-                            0,
-                            nullptr);
-
-    vkCmdDrawIndexed(CurrentCommandBuffer, static_cast<uint32_t>(Indices.size()), 1, 0, 0, 0);*/
+    // render loaded models here?
 }
 
 void CVERenderSystem::CreateDescriptorSetLayout()
