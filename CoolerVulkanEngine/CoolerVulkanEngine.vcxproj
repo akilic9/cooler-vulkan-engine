@@ -139,10 +139,12 @@
     <ClCompile Include="CVEGameObject.cpp" />
     <ClCompile Include="CVEInstanceUtil.cpp" />
     <ClCompile Include="CVEModel.cpp" />
+    <ClCompile Include="CVEPipeline.cpp" />
     <ClCompile Include="CVERenderer.cpp" />
     <ClCompile Include="CVESwapChain.cpp" />
     <ClCompile Include="CVETexture.cpp" />
     <ClCompile Include="CVEWindow.cpp" />
+    <ClCompile Include="CVERenderSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CVEApplication.h" />
@@ -150,11 +152,13 @@
     <ClInclude Include="CVEGameObject.h" />
     <ClInclude Include="CVEInstanceUtil.h" />
     <ClInclude Include="CVEModel.h" />
+    <ClInclude Include="CVEPipeline.h" />
     <ClInclude Include="CVERenderer.h" />
     <ClInclude Include="CVESwapChain.h" />
     <ClInclude Include="CVETexture.h" />
     <ClInclude Include="CVETypes.h" />
     <ClInclude Include="CVEWindow.h" />
+    <ClInclude Include="CVERenderSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders\shaderCompile.bat" />

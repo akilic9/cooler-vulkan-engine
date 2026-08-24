@@ -165,7 +165,7 @@ VkImage CVESwapChain::GetDepthImage() const
     return DepthImage;
 }
 
-VkFormat CVESwapChain::GetDepthFormat()
+VkFormat CVESwapChain::GetDepthFormat() const
 {
     return DepthFormat;
 }

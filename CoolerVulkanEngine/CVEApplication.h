@@ -3,6 +3,7 @@
 #include "CVEDevice.h"
 #include "CVESwapChain.h"
 #include "CVERenderer.h"
+#include "CVERenderSystem.h"
 
 namespace CVEDefaultWindowParams
 {
@@ -23,4 +24,5 @@ private:
     CVEDevice Device{Window};
     CVESwapChain SwapChain{Device, Window.GetWindowExtent()};
     CVERenderer Renderer{Device, SwapChain, Window};
+    CVERenderSystem RenderSystem{Device, SwapChain};
 };

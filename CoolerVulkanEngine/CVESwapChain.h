@@ -26,7 +26,7 @@ public:
     const std::vector<VkImageView>& GetSwapChainImageViews() const;
     void GetDepthAttachmentInfo(VkRenderingAttachmentInfo& outAttachmentInfo);
     VkImage GetDepthImage() const;
-    VkFormat GetDepthFormat();
+    VkFormat GetDepthFormat() const;
     
     VkResult AcquireNextImage(const uint32_t frameIndex, uint32_t* imageIndex);    
     void WaitForFences(const uint32_t frameIndex);

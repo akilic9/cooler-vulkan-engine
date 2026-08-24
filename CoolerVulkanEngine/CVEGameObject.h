@@ -12,9 +12,9 @@ public:
     CVEGameObject(const std::shared_ptr<CVEModel>& model, const CVETransform& transform = CVETransform());
     ~CVEGameObject();
     
-    CVEGameObject(CVEGameObject&&) = default;
     CVEGameObject(const CVEGameObject&) = delete;
     CVEGameObject& operator=(const CVEGameObject&) = delete;
+    CVEGameObject(CVEGameObject&&) = default;
     CVEGameObject& operator=(CVEGameObject&&) = delete;
     
     CVETransform Transform;

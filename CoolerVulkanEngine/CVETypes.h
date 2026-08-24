@@ -128,3 +128,9 @@ struct CVEModelData
     std::vector<CVEVertex> Vertices;
     std::vector<uint32_t> Indices;
 };
+
+struct CVEUniformBufferObject
+{
+    glm::mat4 View;
+    glm::mat4 Projection;
+};
