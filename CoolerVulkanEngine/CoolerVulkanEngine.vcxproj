@@ -110,7 +110,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\glfw-3.4;$(SolutionDir)Libraries\assimp;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\Vulkan-1.4.350.0;$(SolutionDir)Libraries\assimp;$(SolutionDir)Libraries\glfw-3.4;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -144,7 +144,6 @@
     <ClCompile Include="CVESwapChain.cpp" />
     <ClCompile Include="CVETexture.cpp" />
     <ClCompile Include="CVEWindow.cpp" />
-    <ClCompile Include="CVERenderSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CVEApplication.h" />
@@ -158,7 +157,6 @@
     <ClInclude Include="CVETexture.h" />
     <ClInclude Include="CVETypes.h" />
     <ClInclude Include="CVEWindow.h" />
-    <ClInclude Include="CVERenderSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders\shaderCompile.bat" />

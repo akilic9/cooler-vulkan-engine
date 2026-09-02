@@ -26,7 +26,7 @@ CVETexture::CVETexture(CVEDevice& device, const std::string& filePath, void* dat
     : Device(device)
     , FilePath(filePath)
 {    
-    CreateTexture(static_cast<unsigned char*>(data), width, height, VK_FORMAT_B8G8R8A8_SRGB);
+    CreateTexture(static_cast<unsigned char*>(data), width, height, format);
 }
 
 std::shared_ptr<CVETexture> CVETexture::LoadTexture(CVEDevice& device, const std::string& filePath)

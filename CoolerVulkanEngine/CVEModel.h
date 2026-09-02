@@ -25,6 +25,10 @@ public:
     
     void LoadModel(const std::string& filePath);
     void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+    void Update();
+    
+    uint32_t GetTextureCount() const;
+    void CreateTextureDescriptorSets(VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout);
     
 private:
     void ProcessNode(aiNode* node, const aiScene* scene, CVEModelData& modelData);    
@@ -46,4 +50,5 @@ private:
     
     std::vector<CVEMesh> Meshes;    
     std::vector<std::shared_ptr<CVETexture>> Textures;
+    std::vector<VkDescriptorSet> TextureDescriptorSets;
 };

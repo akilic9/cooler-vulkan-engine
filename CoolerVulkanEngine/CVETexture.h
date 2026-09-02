@@ -55,10 +55,10 @@ private:
                                VkImageLayout   newLayout);
     
     CVEDevice& Device;
-    VkImage TextureImage;
-    VkDeviceMemory TextureImageMemory;
-    VkImageView TextureImageView;
-    VkSampler TextureSampler;
+    VkImage TextureImage = VK_NULL_HANDLE;
+    VkDeviceMemory TextureImageMemory = VK_NULL_HANDLE;
+    VkImageView TextureImageView = VK_NULL_HANDLE;
+    VkSampler TextureSampler = VK_NULL_HANDLE;
     VkDescriptorImageInfo DescriptorImageInfo;
     
     const std::string FilePath; // to avoid loading the same texture multiple times in models

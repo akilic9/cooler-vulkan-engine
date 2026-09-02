@@ -71,11 +71,14 @@ VkCommandBuffer CVERenderer::BeginDraw()
     }
     
     SwapChain.ResetFences(CurrentFrameIndex);
+    Drawing = true;
     return CommandBuffers[CurrentFrameIndex];
 }
 
 void CVERenderer::EndDraw()
 {
+    assert(Drawing && "Can't call EndDraw while frame is not in progress.");
+    
     VkCommandBuffer CurrentCommandBuffer = CommandBuffers[CurrentFrameIndex];
     vkCmdEndRendering(CurrentCommandBuffer);
 
@@ -91,9 +94,8 @@ void CVERenderer::EndDraw()
     if (vkEndCommandBuffer(CurrentCommandBuffer) != VK_SUCCESS)
     {
         throw std::runtime_error("Error command buffer record end!");
-    }
+    }    
     
-    assert(Drawing && "Can't call EndDraw while frame is not in progress.");
     VkResult result = SwapChain.SubmitCommandBuffer(CommandBuffers[CurrentFrameIndex], CurrentFrameIndex, CurrentImageIndex);
     
     if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || Window.GetWasResized())
@@ -128,6 +130,8 @@ void CVERenderer::CreateCommandBuffers()
 
 void CVERenderer::BeginRecordCommandBuffer()
 {
+    assert(Drawing && "Can't call BeginRecordCommandBuffer while frame is not in progress.");
+    
     VkCommandBuffer CurrentCommandBuffer = CommandBuffers[CurrentFrameIndex];
     
     vkResetCommandBuffer(CurrentCommandBuffer, 0);

@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
-
-#include "CVETexture.h"
+#include <vulkan/vulkan_core.h>
 
 class CVEPipeline;
 class CVEWindow;

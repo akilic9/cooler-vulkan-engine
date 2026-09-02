@@ -35,7 +35,6 @@ struct CVEVertex
 struct CVEGameObjectPushConstant
 {
     glm::mat4 mModelMatrix{ 1.f };
-    glm::mat4 mNormalMatrix{ 1.f };
 };
 
 struct CVETransform
@@ -118,7 +117,6 @@ struct CVETransform
 struct CVEMesh
 {
     uint32_t IndexCount;
-    uint32_t VertexCount; 
     uint32_t FirstIndex;
     int32_t TextureIndex = -1;   
 };
@@ -129,7 +127,7 @@ struct CVEModelData
     std::vector<uint32_t> Indices;
 };
 
-struct CVEUniformBufferObject
+struct CVEUniformBuffer
 {
     glm::mat4 View;
     glm::mat4 Projection;

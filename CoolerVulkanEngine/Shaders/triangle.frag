@@ -1,7 +1,7 @@
-[[vk::binding(1, 0)]]
+[[vk::binding(0, 0)]]
 Texture2D texture : register(t1, space0);
 
-[[vk::binding(1, 0)]]
+[[vk::binding(0, 0)]]
 SamplerState textureSampler : register(s1, space0);
 
 struct PSInput
