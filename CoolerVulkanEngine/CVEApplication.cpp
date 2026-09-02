@@ -11,7 +11,7 @@
 
 CVEApplication::CVEApplication()
 {
-    Model = std::make_unique<CVEModel>(Device, "Assets/pikachu.gif");
+    Model = std::make_unique<CVEModel>(Device, "Assets/damaged-helmet.fbx");
     CreateDescriptorSetLayout();
     CreatePipelineLayout();
     Pipeline = std::make_unique<CVEPipeline>(Device, SwapChain, PipelineLayout);
