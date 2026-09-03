@@ -52,6 +52,10 @@ void CVEApplication::Run()
             Renderer.BeginRecordCommandBuffer();
             
             Pipeline->Bind(commandBuffer);
+            
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout, 0, 1, 
+                &SceneDescriptorSets[Renderer.GetCurrentFrameIndex()], 0, nullptr);
+            
             Model->Draw(commandBuffer, PipelineLayout);
             
             Renderer.EndDraw();
@@ -131,6 +135,7 @@ void CVEApplication::CreateDescriptorPool()
 void CVEApplication::CreateDescriptorSets()
 {
     std::vector<VkDescriptorSetLayout> sceneLayouts(CVESwapChain::MAX_FRAMES_IN_FLIGHT, SceneDescriptorSetLayout);
+    SceneDescriptorSets.resize(sceneLayouts.size());
     
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -143,7 +148,7 @@ void CVEApplication::CreateDescriptorSets()
         throw std::runtime_error("Failed to create descriptor set.");
     }
     
-    for (int i = 0; i < UniformBuffers.size(); i++)
+    for (int i = 0; i < CVESwapChain::MAX_FRAMES_IN_FLIGHT; i++)
     {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = UniformBuffers[i];

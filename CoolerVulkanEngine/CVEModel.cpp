@@ -52,7 +52,7 @@ void CVEModel::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayo
     
     for (const CVEMesh& mesh : Meshes)
     {    
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, 
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, 
             &TextureDescriptorSets[mesh.TextureIndex], 0, nullptr);
     
         vkCmdDrawIndexed(commandBuffer, mesh.IndexCount, 1, mesh.FirstIndex, 0, 0);
