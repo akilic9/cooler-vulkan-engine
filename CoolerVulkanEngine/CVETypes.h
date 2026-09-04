@@ -34,7 +34,7 @@ struct CVEVertex
 
 struct CVEGameObjectPushConstant
 {
-    glm::mat4 mModelMatrix{ 1.f };
+    glm::mat4 ModelMatrix{ 1.f };
 };
 
 struct CVETransform

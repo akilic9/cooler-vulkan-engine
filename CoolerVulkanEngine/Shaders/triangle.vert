@@ -1,12 +1,18 @@
 struct UniformBufferObject
 {
-    float4x4 model;
     float4x4 view;
     float4x4 projection;
 };
 
+struct CVEGameObjectPushConstant
+{
+    float4x4 modelMatrix;
+};
+
 [[vk::binding(0, 0)]]
-ConstantBuffer<UniformBufferObject> ubo : register(b0, space0);
+ConstantBuffer<UniformBufferObject> sceneUbo : register(b0, space0);
+
+[[vk::push_constant]] CVEGameObjectPushConstant pushConsts;
 
 struct VSInput
 {
@@ -28,6 +34,6 @@ VSOutput main(VSInput input)
     VSOutput output;
     output.colour = input.colour;
     output.texCoord0 = input.texCoord0;
-    output.position = mul(ubo.projection, mul(ubo.view, mul(ubo.model, float4(input.position, 1.0))));
+    output.position = mul(sceneUbo.projection, mul(sceneUbo.view, mul(pushConsts.modelMatrix, float4(input.position, 1.0))));
     return output;
 }

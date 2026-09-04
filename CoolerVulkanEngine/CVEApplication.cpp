@@ -11,7 +11,7 @@
 
 CVEApplication::CVEApplication()
 {
-    Model = std::make_unique<CVEModel>(Device, "Assets/damaged-helmet.fbx");
+    Model = std::make_unique<CVEModel>(Device, "Assets/Chicken.fbx");
     CreateDescriptorSetLayout();
     CreatePipelineLayout();
     Pipeline = std::make_unique<CVEPipeline>(Device, SwapChain, PipelineLayout);
@@ -95,13 +95,16 @@ void CVEApplication::CreateDescriptorSetLayout()
 
 void CVEApplication::CreatePipelineLayout()
 {
-    std::array<VkDescriptorSetLayout, 2> setLayouts = { SceneDescriptorSetLayout, ModelDescriptorSetLayout };
+    VkPushConstantRange pushConstantRange {VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CVEGameObjectPushConstant)};
+    
+    std::array<VkDescriptorSetLayout, 2> setLayouts = {SceneDescriptorSetLayout, ModelDescriptorSetLayout};
     
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount         = static_cast<uint32_t>(setLayouts.size());
     pipelineLayoutInfo.pSetLayouts            = setLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges    = &pushConstantRange;
     
     if (vkCreatePipelineLayout(Device.GetLogicalDevice(), &pipelineLayoutInfo, nullptr, &PipelineLayout) != VK_SUCCESS)
     {
@@ -193,8 +196,8 @@ void CVEApplication::CreateSceneUniformBuffers()
 
 void CVEApplication::UpdateSceneUBO()
 {
-    CVEUniformBuffer ubo{};
-    ubo.View = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    CVEUniformBuffer ubo;
+    ubo.View = lookAt(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.Projection = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(SwapChain.GetExtent().width) / static_cast<float>(SwapChain.GetExtent().height),
                                 0.1f,

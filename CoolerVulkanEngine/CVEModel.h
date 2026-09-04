@@ -6,6 +6,8 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+#include "CVETypes.h"
+
 struct CVEModelData;
 struct CVEVertex;
 class CVETexture;
@@ -51,4 +53,8 @@ private:
     std::vector<CVEMesh> Meshes;    
     std::vector<std::shared_ptr<CVETexture>> Textures;
     std::vector<VkDescriptorSet> TextureDescriptorSets;
+    
+    CVETransform Transform;
+    
+    glm::mat4 ModelMatrix{1.0f};
 };

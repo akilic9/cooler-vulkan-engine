@@ -1,4 +1,6 @@
 #include "CVEModel.h"
+
+#include <chrono>
 #include <iostream>
 #include <ostream>
 #include <assimp/postprocess.h>
@@ -29,7 +31,7 @@ CVEModel::~CVEModel()
 void CVEModel::LoadModel(const std::string& filePath)
 {
     Assimp::Importer importer;
-    const aiScene* Scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+    const aiScene* Scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_FlipUVs);
 
     if (!Scene)
     {
@@ -50,10 +52,16 @@ void CVEModel::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayo
     
     vkCmdBindIndexBuffer(commandBuffer, IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
     
+    CVEGameObjectPushConstant pushConstants{ Transform.Mat4() };
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConstants), &pushConstants);
+    
     for (const CVEMesh& mesh : Meshes)
-    {    
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, 
-            &TextureDescriptorSets[mesh.TextureIndex], 0, nullptr);
+    {
+        if (mesh.TextureIndex >= 0)
+        {
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, 
+                &TextureDescriptorSets[mesh.TextureIndex], 0, nullptr);
+        }
     
         vkCmdDrawIndexed(commandBuffer, mesh.IndexCount, 1, mesh.FirstIndex, 0, 0);
     }
@@ -61,7 +69,13 @@ void CVEModel::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayo
 
 void CVEModel::Update()
 {
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
     
+    Transform.Rotation = glm::vec3(0.f, 0.f, 0.f);
+    Transform.Translation = glm::vec3(2.f, 1.f, 1.f);
 }
 
 uint32_t CVEModel::GetTextureCount() const
@@ -184,7 +198,7 @@ int32_t CVEModel::LoadTexture(const aiMesh* mesh, const aiScene* scene)
         return textureIndex;
     }
         
-    std::string path =  FileDirectory + "/" + fileName.C_Str();
+    std::string path =  FileDirectory + "\\" + fileName.C_Str();
     std::shared_ptr<CVETexture> newTexture;
     if (const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.C_Str()))
     {
